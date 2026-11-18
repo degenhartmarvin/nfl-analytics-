@@ -59,7 +59,7 @@ def build(pbp,players):
   vals=[x for x in out if x.get(key) is not None];vals.sort(key=lambda x:x[key],reverse=high);last=None;rank=0
   for i,x in enumerate(vals,1):
    if last is None or x[key]!=last:rank=i
-   x[key+"_rank']=rank;last=x[key]
+   x[key+"_rank"]=rank;last=x[key]
  return sorted(out,key=lambda x:x["receiving_yards"],reverse=True)
 def main():
  pbp=parse(download(PBP_URL));players=parse(download(PLAYERS_URL));data=build(pbp,players)
