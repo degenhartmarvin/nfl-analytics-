@@ -39,6 +39,14 @@ METRICS = [
  {"id":"def_fourth_down_stop_rate","name":"4th Down Stop Rate","side":"defense","unit":"%","higher_is_better":True},
  {"id":"def_sack_rate","name":"Sack Rate","side":"defense","unit":"% dropbacks","higher_is_better":True},
  {"id":"def_turnovers_per_drive","name":"Turnovers per Drive","side":"defense","unit":"TO/drive","higher_is_better":True},
+ {"id":"off_yards_per_rush","name":"Rushing Yards per Attempt","side":"offense","unit":"yds/rush","higher_is_better":True},
+ {"id":"off_explosive_play_rate","name":"Overall Explosive Play Rate","side":"offense","unit":"% plays","higher_is_better":True},
+ {"id":"off_pass_play_share","name":"Pass Play Share","side":"offense","unit":"% plays","higher_is_better":None},
+ {"id":"off_rush_play_share","name":"Rush Play Share","side":"offense","unit":"% plays","higher_is_better":None},
+ {"id":"def_yards_per_rush_allowed","name":"Rushing Yards Allowed/Attempt","side":"defense","unit":"yds/rush","higher_is_better":False},
+ {"id":"def_explosive_play_rate_allowed","name":"Overall Explosive Plays Allowed","side":"defense","unit":"% plays","higher_is_better":False},
+ {"id":"def_pass_play_share_allowed","name":"Opponent Pass Play Share","side":"defense","unit":"% plays","higher_is_better":None},
+ {"id":"def_rush_play_share_allowed","name":"Opponent Rush Play Share","side":"defense","unit":"% plays","higher_is_better":None},
 ]
 def fnum(x):
  try:
@@ -67,9 +75,11 @@ def calculate(rows):
    v["plays"]+=1;v["yards"]+=yards;v["epa"]+=epa;v["success"]+=success
   if kind=="pass":
    a["pass"]+=1;b["pass"]+=1
+   a["pass_yards_total"]+=yards;b["pass_yards_total"]+=yards
    if yards>=20:a["explosive_pass"]+=1;b["explosive_pass"]+=1
   else:
    a["rush"]+=1;b["rush"]+=1
+   a["rush_yards_total"]+=yards;b["rush_yards_total"]+=yards
    if yards>=10:a["explosive_rush"]+=1;b["explosive_rush"]+=1
   # Optional advanced-stat fields: tolerate absent columns in older/synthetic fixtures.
   down=fnum(r.get("down")); first_down=istrue(r.get("first_down"))
@@ -125,6 +135,12 @@ def calculate(rows):
    "def_first_down_rate_allowed":d["first_downs_allowed"]/d["plays"],"def_third_down_stop_rate":1-d["third_converted"]/d["third_plays"] if d["third_plays"] else None,
    "def_fourth_down_stop_rate":1-d["fourth_converted"]/d["fourth_plays"] if d["fourth_plays"] else None,"def_sack_rate":d["sacks"]/(d["pass_attempts"]+d["sacks"]) if (d["pass_attempts"]+d["sacks"]) else None,
    "def_turnovers_per_drive":d["takeaways"]/max(1,len({(x.get("game_id"),x.get("drive")) for x in rows if x.get("defteam")==t})),
+   "off_yards_per_rush":o["rush_yards_total"]/o["rush"] if o["rush"] else None,
+   "off_explosive_play_rate":(o["explosive_pass"]+o["explosive_rush"])/o["plays"],
+   "off_pass_play_share":o["pass"]/o["plays"],"off_rush_play_share":o["rush"]/o["plays"],
+   "def_yards_per_rush_allowed":d["rush_yards_total"]/d["rush"] if d["rush"] else None,
+   "def_explosive_play_rate_allowed":(d["explosive_pass"]+d["explosive_rush"])/d["plays"],
+   "def_pass_play_share_allowed":d["pass"]/d["plays"],"def_rush_play_share_allowed":d["rush"]/d["plays"],
    "off_plays":int(o["plays"]),"def_plays":int(d["plays"])})
  return out
 def rank(data):
