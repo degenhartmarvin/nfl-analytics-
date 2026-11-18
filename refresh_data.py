@@ -145,6 +145,7 @@ def calculate(rows):
  return out
 def rank(data):
  for m in METRICS:
+  if m.get("higher_is_better") is None: continue
   key=m["id"];vals=[(x["team"],x.get(key)) for x in data]
   if any(v is None for _,v in vals):continue
   vals.sort(key=lambda kv:kv[1],reverse=m["higher_is_better"])
