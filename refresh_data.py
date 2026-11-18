@@ -21,6 +21,24 @@ METRICS = [
  {"id":"def_explosive_pass_rate_allowed","name":"Explosive Pass Allowed (20+)","side":"defense","unit":"%","higher_is_better":False},
  {"id":"def_explosive_rush_rate_allowed","name":"Explosive Rush Allowed (10+)","side":"defense","unit":"%","higher_is_better":False},
  {"id":"def_redzone_td_rate_allowed","name":"Defense Red Zone TD Rate Allowed","side":"defense","unit":"% drives","higher_is_better":False},
+ {"id":"off_pass_epa_per_play","name":"Passing EPA/Play","side":"offense","unit":"EPA/play","higher_is_better":True},
+ {"id":"off_rush_epa_per_play","name":"Rushing EPA/Play","side":"offense","unit":"EPA/play","higher_is_better":True},
+ {"id":"off_completion_rate","name":"Completion Rate","side":"offense","unit":"%","higher_is_better":True},
+ {"id":"off_yards_per_pass_attempt","name":"Passing Yards/Attempt","side":"offense","unit":"yds/att","higher_is_better":True},
+ {"id":"off_first_down_rate","name":"First Down Rate","side":"offense","unit":"% plays","higher_is_better":True},
+ {"id":"off_third_down_rate","name":"3rd Down Conversion","side":"offense","unit":"%","higher_is_better":True},
+ {"id":"off_fourth_down_rate","name":"4th Down Conversion","side":"offense","unit":"%","higher_is_better":True},
+ {"id":"off_sack_rate_allowed","name":"Sack Rate Allowed","side":"offense","unit":"% dropbacks","higher_is_better":False},
+ {"id":"off_turnovers_per_drive","name":"Turnovers per Drive","side":"offense","unit":"TO/drive","higher_is_better":False},
+ {"id":"def_pass_epa_allowed","name":"Passing EPA Allowed/Play","side":"defense","unit":"EPA/play","higher_is_better":False},
+ {"id":"def_rush_epa_allowed","name":"Rushing EPA Allowed/Play","side":"defense","unit":"EPA/play","higher_is_better":False},
+ {"id":"def_completion_rate_allowed","name":"Completion Rate Allowed","side":"defense","unit":"%","higher_is_better":False},
+ {"id":"def_yards_per_pass_attempt_allowed","name":"Passing Yards/Attempt Allowed","side":"defense","unit":"yds/att","higher_is_better":False},
+ {"id":"def_first_down_rate_allowed","name":"First Down Rate Allowed","side":"defense","unit":"% plays","higher_is_better":False},
+ {"id":"def_third_down_stop_rate","name":"3rd Down Stop Rate","side":"defense","unit":"%","higher_is_better":True},
+ {"id":"def_fourth_down_stop_rate","name":"4th Down Stop Rate","side":"defense","unit":"%","higher_is_better":True},
+ {"id":"def_sack_rate","name":"Sack Rate","side":"defense","unit":"% dropbacks","higher_is_better":True},
+ {"id":"def_turnovers_per_drive","name":"Turnovers per Drive","side":"defense","unit":"TO/drive","higher_is_better":True},
 ]
 def fnum(x):
  try:
@@ -53,6 +71,29 @@ def calculate(rows):
   else:
    a["rush"]+=1;b["rush"]+=1
    if yards>=10:a["explosive_rush"]+=1;b["explosive_rush"]+=1
+  # Optional advanced-stat fields: tolerate absent columns in older/synthetic fixtures.
+  down=fnum(r.get("down")); first_down=istrue(r.get("first_down"))
+  pass_attempt=istrue(r.get("pass_attempt")); complete=istrue(r.get("complete_pass"))
+  sack=istrue(r.get("sack")); turnover=istrue(r.get("interception")) or istrue(r.get("fumble_lost"))
+  if kind=="pass":
+   a["pass_epa"]+=epa;b["pass_epa"]+=epa;a["pass_epa_n"]+=1;b["pass_epa_n"]+=1
+   if pass_attempt:
+    a["pass_attempts"]+=1;b["pass_attempts"]+=1
+    a["pass_yards"]+=yards;b["pass_yards"]+=yards
+    a["completions"]+=int(complete);b["completions"]+=int(complete)
+   if sack:
+    a["sacks_allowed"]+=1;b["sacks"]+=1
+  if kind=="run":
+   a["rush_epa"]+=epa;b["rush_epa"]+=epa;a["rush_epa_n"]+=1;b["rush_epa_n"]+=1
+  a["first_downs"]+=int(first_down);b["first_downs_allowed"]+=int(first_down)
+  if down==3:
+   a["third_plays"]+=1;b["third_plays"]+=1
+   a["third_converted"]+=int(first_down or istrue(r.get("touchdown")));b["third_converted"]+=int(first_down or istrue(r.get("touchdown")))
+  if down==4:
+   a["fourth_plays"]+=1;b["fourth_plays"]+=1
+   a["fourth_converted"]+=int(first_down or istrue(r.get("touchdown")));b["fourth_converted"]+=int(first_down or istrue(r.get("touchdown")))
+  if turnover:
+   a["turnovers"]+=1;b["takeaways"]+=1
   rzkey=(oteam,game,drive)
   state=rz.setdefault(rzkey,{"in":False,"td":False,"def":dteam})
   yline=fnum(r.get("yardline_100"))
@@ -73,7 +114,18 @@ def calculate(rows):
    "off_redzone_td_rate":o["rz_td"]/o["rz_drives"] if o["rz_drives"] else None,
    "def_yards_allowed_per_play":d["yards"]/d["plays"],"def_epa_allowed_per_play":d["epa"]/d["plays"],"def_success_rate_allowed":d["success"]/d["plays"],
    "def_explosive_pass_rate_allowed":d["explosive_pass"]/d["pass"] if d["pass"] else None,"def_explosive_rush_rate_allowed":d["explosive_rush"]/d["rush"] if d["rush"] else None,
-   "def_redzone_td_rate_allowed":d["rz_td"]/d["rz_drives"] if d["rz_drives"] else None,"off_plays":int(o["plays"]),"def_plays":int(d["plays"])})
+   "def_redzone_td_rate_allowed":d["rz_td"]/d["rz_drives"] if d["rz_drives"] else None,
+   "off_pass_epa_per_play":o["pass_epa"]/o["pass_epa_n"] if o["pass_epa_n"] else None,"off_rush_epa_per_play":o["rush_epa"]/o["rush_epa_n"] if o["rush_epa_n"] else None,
+   "off_completion_rate":o["completions"]/o["pass_attempts"] if o["pass_attempts"] else None,"off_yards_per_pass_attempt":o["pass_yards"]/o["pass_attempts"] if o["pass_attempts"] else None,
+   "off_first_down_rate":o["first_downs"]/o["plays"],"off_third_down_rate":o["third_converted"]/o["third_plays"] if o["third_plays"] else None,
+   "off_fourth_down_rate":o["fourth_converted"]/o["fourth_plays"] if o["fourth_plays"] else None,"off_sack_rate_allowed":o["sacks_allowed"]/(o["pass_attempts"]+o["sacks_allowed"]) if (o["pass_attempts"]+o["sacks_allowed"]) else None,
+   "off_turnovers_per_drive":o["turnovers"]/max(1,len({(x.get("game_id"),x.get("drive")) for x in rows if x.get("posteam")==t})),
+   "def_pass_epa_allowed":d["pass_epa"]/d["pass_epa_n"] if d["pass_epa_n"] else None,"def_rush_epa_allowed":d["rush_epa"]/d["rush_epa_n"] if d["rush_epa_n"] else None,
+   "def_completion_rate_allowed":d["completions"]/d["pass_attempts"] if d["pass_attempts"] else None,"def_yards_per_pass_attempt_allowed":d["pass_yards"]/d["pass_attempts"] if d["pass_attempts"] else None,
+   "def_first_down_rate_allowed":d["first_downs_allowed"]/d["plays"],"def_third_down_stop_rate":1-d["third_converted"]/d["third_plays"] if d["third_plays"] else None,
+   "def_fourth_down_stop_rate":1-d["fourth_converted"]/d["fourth_plays"] if d["fourth_plays"] else None,"def_sack_rate":d["sacks"]/(d["pass_attempts"]+d["sacks"]) if (d["pass_attempts"]+d["sacks"]) else None,
+   "def_turnovers_per_drive":d["takeaways"]/max(1,len({(x.get("game_id"),x.get("drive")) for x in rows if x.get("defteam")==t})),
+   "off_plays":int(o["plays"]),"def_plays":int(d["plays"])})
  return out
 def rank(data):
  for m in METRICS:
