@@ -123,7 +123,7 @@ def build(pbp, player_rows):
         for index,player in enumerate(valid,1):
             if previous is None or player[metric]!=previous:
                 rank_value=index
-            player[metric+"_rank']=rank_value
+            player[metric+"_rank"]=rank_value
             previous=player[metric]
     return sorted(output,key=lambda player:player["receiving_yards"],reverse=True)
 
