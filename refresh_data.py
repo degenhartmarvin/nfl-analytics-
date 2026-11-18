@@ -57,6 +57,13 @@ METRICS = [
  {"id":"def_three_and_out_rate","name":"Defensive 3-and-Out Rate","side":"defense","unit":"% drives","higher_is_better":True},
  {"id":"off_points_per_game","name":"Points per Game","side":"offense","unit":"pts/game","higher_is_better":True},
  {"id":"def_points_allowed_per_game","name":"Points Allowed per Game","side":"defense","unit":"pts/game","higher_is_better":False},
+ {"id":"off_turnovers_per_game","name":"Turnovers per Game","side":"offense","unit":"TO/game","higher_is_better":False},
+ {"id":"def_takeaways_per_game","name":"Takeaways per Game","side":"defense","unit":"TO/game","higher_is_better":True},
+ {"id":"off_sacks_allowed_per_game","name":"Sacks Allowed per Game","side":"offense","unit":"sacks/game","higher_is_better":False},
+ {"id":"def_sacks_per_game","name":"Sacks per Game","side":"defense","unit":"sacks/game","higher_is_better":True},
+ {"id":"off_td_per_drive","name":"Touchdowns per Drive","side":"offense","unit":"TD/drive","higher_is_better":True},
+ {"id":"off_start_field_position","name":"Average Drive Start (Own Yardline)","side":"offense","unit":"yardline","higher_is_better":True},
+ {"id":"def_start_field_position_allowed","name":"Opponent Drive Start Position","side":"defense","unit":"yardline","higher_is_better":False},
 ]
 def fnum(x):
  try:
@@ -140,17 +147,21 @@ def calculate(rows):
  for (t,g),scores in score_snap.items():
   team_points[t]["scored"]+=scores["off"];team_points[t]["allowed"]+=scores["def"];team_points[t]["games"]+=1
  # Aggregate drive-level outcomes from the same PBP rows (pass/run plays).
- drives=defaultdict(lambda:{"plays":0,"yards":0.0,"first_downs":0,"td":False})
+ drives=defaultdict(lambda:{"plays":0,"yards":0.0,"first_downs":0,"td":False,"start_yard":None})
  for r in rows:
   t,game,drive=r.get("posteam"),r.get("game_id"),r.get("drive")
   if t not in TEAMS or not drive or r.get("play_type") not in ("pass","run"): continue
   y,fd=fnum(r.get("yards_gained")),istrue(r.get("first_down"))
   if y is None: continue
   ds=drives[(t,game,drive)];ds["plays"]+=1;ds["yards"]+=y;ds["first_downs"]+=int(fd)
+  yl=fnum(r.get("yardline_100"))
+  if ds["start_yard"] is None and yl is not None:ds["start_yard"]=yl
   if istrue(r.get("touchdown")) or istrue(r.get("pass_touchdown")) or istrue(r.get("rush_touchdown")):ds["td"]=True
  for (t,game,drive),ds in drives.items():
   o=off[t];d=de[next((r.get("defteam") for r in rows if r.get("posteam")==t and r.get("game_id")==game and r.get("drive")==drive),None)]
-  o["drive_count"]+=1;o["drive_plays"]+=ds["plays"];o["drive_yards"]+=ds["yards"]
+  o["drive_count"]+=1;o["drive_plays"]+=ds["plays"];o["drive_yards"]+=ds["yards"];o["drive_td"]+=int(ds["td"])
+  if ds["start_yard"] is not None:o["drive_start_yards"]+=ds["start_yard"];o["drive_start_n"]+=1
+  if ds["start_yard"] is not None:d["opp_drive_start_yards"]+=ds["start_yard"];d["opp_drive_start_n"]+=1
   o["drive_success"]+=int(ds["first_down"]>0 or ds["td"]);o["three_and_out"]+=int(ds["plays"]<=3 and ds["first_downs"]==0 and not ds["td"])
   d["drive_count_allowed"]+=1;d["drive_plays_allowed"]+=ds["plays"];d["drive_yards_allowed"]+=ds["yards"]
   d["drive_success_allowed"]+=int(ds["first_downs"]>0 or ds["td"]);d["three_and_outs"]+=int(ds["plays"]<=3 and ds["first_downs"]==0 and not ds["td"])
@@ -190,7 +201,14 @@ def calculate(rows):
    "def_three_and_out_rate":d["three_and_outs"]/d["drive_count_allowed"] if d["drive_count_allowed"] else None,
    "off_plays":int(o["plays"]),"def_plays":int(d["plays"]),
    "off_points_per_game":team_points[t]["scored"]/team_points[t]["games"] if team_points[t]["games"] else None,
-   "def_points_allowed_per_game":team_points[t]["allowed"]/team_points[t]["games"] if team_points[t]["games"] else None})
+   "def_points_allowed_per_game":team_points[t]["allowed"]/team_points[t]["games"] if team_points[t]["games"] else None,
+   "off_turnovers_per_game":o["turnovers"]/team_points[t]["games"] if team_points[t]["games"] else None,
+   "def_takeaways_per_game":d["takeaways"]/team_points[t]["games"] if team_points[t]["games"] else None,
+   "off_sacks_allowed_per_game":o["sacks_allowed"]/team_points[t]["games"] if team_points[t]["games"] else None,
+   "def_sacks_per_game":d["sacks"]/team_points[t]["games"] if team_points[t]["games"] else None,
+   "off_td_per_drive":o["drive_td"]/o["drive_count"] if o["drive_count"] else None,
+   "off_start_field_position":o["drive_start_yards"]/o["drive_start_n"] if o["drive_start_n"] else None,
+   "def_start_field_position_allowed":d["opp_drive_start_yards"]/d["opp_drive_start_n"] if d["opp_drive_start_n"] else None})
  return out
 def rank(data):
  for m in METRICS:
