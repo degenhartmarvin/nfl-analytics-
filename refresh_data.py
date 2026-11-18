@@ -55,6 +55,8 @@ METRICS = [
  {"id":"def_avg_yards_per_drive_allowed","name":"Yards per Drive Allowed","side":"defense","unit":"yds/drive","higher_is_better":False},
  {"id":"def_drive_success_rate_allowed","name":"Drive Success Rate Allowed","side":"defense","unit":"% drives","higher_is_better":False},
  {"id":"def_three_and_out_rate","name":"Defensive 3-and-Out Rate","side":"defense","unit":"% drives","higher_is_better":True},
+ {"id":"off_points_per_game","name":"Points per Game","side":"offense","unit":"pts/game","higher_is_better":True},
+ {"id":"def_points_allowed_per_game","name":"Points Allowed per Game","side":"defense","unit":"pts/game","higher_is_better":False},
 ]
 def fnum(x):
  try:
@@ -123,6 +125,20 @@ def calculate(rows):
    if state["td"]:off[team]["rz_td"]+=1
    de[state["def"]]["rz_drives"]+=1
    if state["td"]:de[state["def"]]["rz_td"]+=1
+ # Team final scores reconstructed from score snapshots across all game rows.
+ score_snap=defaultdict(lambda:{"off":0.0,"def":0.0})
+ games_by_team=defaultdict(set)
+ for r in rows:
+  t,opp,g=r.get("posteam"),r.get("defteam"),r.get("game_id")
+  if t in TEAMS and g:
+   games_by_team[t].add(g)
+   ps,ds=fnum(r.get("posteam_score")),fnum(r.get("defteam_score"))
+   if ps is not None:score_snap[(t,g)]["off"]=max(score_snap[(t,g)]["off"],ps)
+   if ds is not None:score_snap[(t,g)]["def"]=max(score_snap[(t,g)]["def"],ds)
+ # Add score metrics after the 32-team rows are created below.
+ team_points=defaultdict(lambda:{"scored":0.0,"allowed":0.0,"games":0})
+ for (t,g),scores in score_snap.items():
+  team_points[t]["scored"]+=scores["off"];team_points[t]["allowed"]+=scores["def"];team_points[t]["games"]+=1
  # Aggregate drive-level outcomes from the same PBP rows (pass/run plays).
  drives=defaultdict(lambda:{"plays":0,"yards":0.0,"first_downs":0,"td":False})
  for r in rows:
@@ -172,7 +188,9 @@ def calculate(rows):
    "def_avg_yards_per_drive_allowed":d["drive_yards_allowed"]/d["drive_count_allowed"] if d["drive_count_allowed"] else None,
    "def_drive_success_rate_allowed":d["drive_success_allowed"]/d["drive_count_allowed"] if d["drive_count_allowed"] else None,
    "def_three_and_out_rate":d["three_and_outs"]/d["drive_count_allowed"] if d["drive_count_allowed"] else None,
-   "off_plays":int(o["plays"]),"def_plays":int(d["plays"])})
+   "off_plays":int(o["plays"]),"def_plays":int(d["plays"]),
+   "off_points_per_game":team_points[t]["scored"]/team_points[t]["games"] if team_points[t]["games"] else None,
+   "def_points_allowed_per_game":team_points[t]["allowed"]/team_points[t]["games"] if team_points[t]["games"] else None})
  return out
 def rank(data):
  for m in METRICS:
