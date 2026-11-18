@@ -30,7 +30,7 @@ def build(pbp,players):
   if r.get("play_type")!="pass" or not truth(r.get("pass_attempt")):continue
   pid=r.get("receiver_player_id")
   if not pid or pid not in roster or roster[pid].get("position")!="WR":continue
-  team=r.get("posteam") or "";s=stats[pid];s["targets"]+=1;team_targets[team]+=1
+  s=stats[pid];s["targets"]+=1
   if team:teams[pid][team]+=1
   yards=num(r.get("yards_gained")) or 0;epa=num(r.get("epa"));succ=num(r.get("success"));complete=truth(r.get("complete_pass"))
   if complete:
