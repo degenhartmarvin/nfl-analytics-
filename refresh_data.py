@@ -47,6 +47,14 @@ METRICS = [
  {"id":"def_explosive_play_rate_allowed","name":"Overall Explosive Plays Allowed","side":"defense","unit":"% plays","higher_is_better":False},
  {"id":"def_pass_play_share_allowed","name":"Opponent Pass Play Share","side":"defense","unit":"% plays","higher_is_better":None},
  {"id":"def_rush_play_share_allowed","name":"Opponent Rush Play Share","side":"defense","unit":"% plays","higher_is_better":None},
+ {"id":"off_avg_plays_per_drive","name":"Average Plays per Drive","side":"offense","unit":"plays/drive","higher_is_better":True},
+ {"id":"off_avg_yards_per_drive","name":"Average Yards per Drive","side":"offense","unit":"yds/drive","higher_is_better":True},
+ {"id":"off_drive_success_rate","name":"Drive Success Rate","side":"offense","unit":"% drives","higher_is_better":True},
+ {"id":"off_three_and_out_rate","name":"3-and-Out Rate","side":"offense","unit":"% drives","higher_is_better":False},
+ {"id":"def_avg_plays_per_drive_allowed","name":"Plays per Drive Allowed","side":"defense","unit":"plays/drive","higher_is_better":False},
+ {"id":"def_avg_yards_per_drive_allowed","name":"Yards per Drive Allowed","side":"defense","unit":"yds/drive","higher_is_better":False},
+ {"id":"def_drive_success_rate_allowed","name":"Drive Success Rate Allowed","side":"defense","unit":"% drives","higher_is_better":False},
+ {"id":"def_three_and_out_rate","name":"Defensive 3-and-Out Rate","side":"defense","unit":"% drives","higher_is_better":True},
 ]
 def fnum(x):
  try:
@@ -115,6 +123,21 @@ def calculate(rows):
    if state["td"]:off[team]["rz_td"]+=1
    de[state["def"]]["rz_drives"]+=1
    if state["td"]:de[state["def"]]["rz_td"]+=1
+ # Aggregate drive-level outcomes from the same PBP rows (pass/run plays).
+ drives=defaultdict(lambda:{"plays":0,"yards":0.0,"first_downs":0,"td":False})
+ for r in rows:
+  t,game,drive=r.get("posteam"),r.get("game_id"),r.get("drive")
+  if t not in TEAMS or not drive or r.get("play_type") not in ("pass","run"): continue
+  y,fd=fnum(r.get("yards_gained")),istrue(r.get("first_down"))
+  if y is None: continue
+  ds=drives[(t,game,drive)];ds["plays"]+=1;ds["yards"]+=y;ds["first_downs"]+=int(fd)
+  if istrue(r.get("touchdown")) or istrue(r.get("pass_touchdown")) or istrue(r.get("rush_touchdown")):ds["td"]=True
+ for (t,game,drive),ds in drives.items():
+  o=off[t];d=de[next((r.get("defteam") for r in rows if r.get("posteam")==t and r.get("game_id")==game and r.get("drive")==drive),None)]
+  o["drive_count"]+=1;o["drive_plays"]+=ds["plays"];o["drive_yards"]+=ds["yards"]
+  o["drive_success"]+=int(ds["first_down"]>0 or ds["td"]);o["three_and_out"]+=int(ds["plays"]<=3 and ds["first_downs"]==0 and not ds["td"])
+  d["drive_count_allowed"]+=1;d["drive_plays_allowed"]+=ds["plays"];d["drive_yards_allowed"]+=ds["yards"]
+  d["drive_success_allowed"]+=int(ds["first_downs"]>0 or ds["td"]);d["three_and_outs"]+=int(ds["plays"]<=3 and ds["first_downs"]==0 and not ds["td"])
  out=[]
  for t in TEAMS:
   o,d=off[t],de[t]
@@ -141,6 +164,14 @@ def calculate(rows):
    "def_yards_per_rush_allowed":d["rush_yards_total"]/d["rush"] if d["rush"] else None,
    "def_explosive_play_rate_allowed":(d["explosive_pass"]+d["explosive_rush"])/d["plays"],
    "def_pass_play_share_allowed":d["pass"]/d["plays"],"def_rush_play_share_allowed":d["rush"]/d["plays"],
+   "off_avg_plays_per_drive":o["drive_plays"]/o["drive_count"] if o["drive_count"] else None,
+   "off_avg_yards_per_drive":o["drive_yards"]/o["drive_count"] if o["drive_count"] else None,
+   "off_drive_success_rate":o["drive_success"]/o["drive_count"] if o["drive_count"] else None,
+   "off_three_and_out_rate":o["three_and_out"]/o["drive_count"] if o["drive_count"] else None,
+   "def_avg_plays_per_drive_allowed":d["drive_plays_allowed"]/d["drive_count_allowed"] if d["drive_count_allowed"] else None,
+   "def_avg_yards_per_drive_allowed":d["drive_yards_allowed"]/d["drive_count_allowed"] if d["drive_count_allowed"] else None,
+   "def_drive_success_rate_allowed":d["drive_success_allowed"]/d["drive_count_allowed"] if d["drive_count_allowed"] else None,
+   "def_three_and_out_rate":d["three_and_outs"]/d["drive_count_allowed"] if d["drive_count_allowed"] else None,
    "off_plays":int(o["plays"]),"def_plays":int(d["plays"])})
  return out
 def rank(data):
