@@ -162,7 +162,7 @@ def calculate(rows):
   o["drive_count"]+=1;o["drive_plays"]+=ds["plays"];o["drive_yards"]+=ds["yards"];o["drive_td"]+=int(ds["td"])
   if ds["start_yard"] is not None:o["drive_start_yards"]+=ds["start_yard"];o["drive_start_n"]+=1
   if ds["start_yard"] is not None:d["opp_drive_start_yards"]+=ds["start_yard"];d["opp_drive_start_n"]+=1
-  o["drive_success"]+=int(ds["first_down"]>0 or ds["td"]);o["three_and_out"]+=int(ds["plays"]<=3 and ds["first_downs"]==0 and not ds["td"])
+  o["drive_success"]+=int(ds["first_downs"]>0 or ds["td"]);o["three_and_out"]+=int(ds["plays"]<=3 and ds["first_downs"]==0 and not ds["td"])
   d["drive_count_allowed"]+=1;d["drive_plays_allowed"]+=ds["plays"];d["drive_yards_allowed"]+=ds["yards"]
   d["drive_success_allowed"]+=int(ds["first_downs"]>0 or ds["td"]);d["three_and_outs"]+=int(ds["plays"]<=3 and ds["first_downs"]==0 and not ds["td"])
  out=[]
