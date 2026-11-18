@@ -5,6 +5,9 @@ on:
     paths:
       - "public/**"
       - ".github/workflows/nfl-data-refresh.yml"
+      - "refresh_data.py"
+      - "refresh_wr_data.py"
+      - "tests/**"
   schedule:
     - cron: "15 10 * * *"
   workflow_dispatch:
