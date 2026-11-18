@@ -1,5 +1,10 @@
 name: NFL Data Refresh and Pages Deploy
 on:
+  push:
+    branches: [main]
+    paths:
+      - "public/**"
+      - ".github/workflows/nfl-data-refresh.yml"
   schedule:
     - cron: "15 10 * * *"
   workflow_dispatch:
