@@ -8,12 +8,30 @@ const metrics=[
 {key:'off_explosive_pass_rate',label:'Explosive Pass Rate (20+)',side:'offense',high:true,format:'pct'},
 {key:'off_explosive_rush_rate',label:'Explosive Rush Rate (10+)',side:'offense',high:true,format:'pct'},
 {key:'off_redzone_td_rate',label:'Red Zone TD Rate',side:'offense',high:true,format:'pct'},
+{key:'off_pass_epa_per_play',label:'Passing EPA per Play',side:'offense',high:true,format:'signed'},
+{key:'off_rush_epa_per_play',label:'Rushing EPA per Play',side:'offense',high:true,format:'signed'},
+{key:'off_completion_rate',label:'Completion Rate',side:'offense',high:true,format:'pct'},
+{key:'off_yards_per_pass_attempt',label:'Passing Yards per Attempt',side:'offense',high:true,format:'number'},
+{key:'off_first_down_rate',label:'First Down Rate',side:'offense',high:true,format:'pct'},
+{key:'off_third_down_rate',label:'3rd Down Conversion',side:'offense',high:true,format:'pct'},
+{key:'off_fourth_down_rate',label:'4th Down Conversion',side:'offense',high:true,format:'pct'},
+{key:'off_sack_rate_allowed',label:'Sack Rate Allowed',side:'offense',high:false,format:'pct'},
+{key:'off_turnovers_per_drive',label:'Turnovers per Drive',side:'offense',high:false,format:'number'},
 {key:'def_yards_allowed_per_play',label:'Yards Allowed per Play',side:'defense',high:false,format:'number'},
 {key:'def_epa_allowed_per_play',label:'EPA Allowed per Play',side:'defense',high:false,format:'signed'},
 {key:'def_success_rate_allowed',label:'Success Rate Allowed',side:'defense',high:false,format:'pct'},
 {key:'def_explosive_pass_rate_allowed',label:'Explosive Pass Allowed (20+)',side:'defense',high:false,format:'pct'},
 {key:'def_explosive_rush_rate_allowed',label:'Explosive Rush Allowed (10+)',side:'defense',high:false,format:'pct'},
-{key:'def_redzone_td_rate_allowed',label:'Red Zone TD Rate Allowed',side:'defense',high:false,format:'pct'}];
+{key:'def_redzone_td_rate_allowed',label:'Red Zone TD Rate Allowed',side:'defense',high:false,format:'pct'},
+{key:'def_pass_epa_allowed',label:'Passing EPA Allowed per Play',side:'defense',high:false,format:'signed'},
+{key:'def_rush_epa_allowed',label:'Rushing EPA Allowed per Play',side:'defense',high:false,format:'signed'},
+{key:'def_completion_rate_allowed',label:'Completion Rate Allowed',side:'defense',high:false,format:'pct'},
+{key:'def_yards_per_pass_attempt_allowed',label:'Passing Yards/Attempt Allowed',side:'defense',high:false,format:'number'},
+{key:'def_first_down_rate_allowed',label:'First Down Rate Allowed',side:'defense',high:false,format:'pct'},
+{key:'def_third_down_stop_rate',label:'3rd Down Stop Rate',side:'defense',high:true,format:'pct'},
+{key:'def_fourth_down_stop_rate',label:'4th Down Stop Rate',side:'defense',high:true,format:'pct'},
+{key:'def_sack_rate',label:'Sack Rate',side:'defense',high:true,format:'pct'},
+{key:'def_turnovers_per_drive',label:'Turnovers per Drive',side:'defense',high:true,format:'number'}];
 const names={ARI:'Arizona Cardinals',ATL:'Atlanta Falcons',BAL:'Baltimore Ravens',BUF:'Buffalo Bills',CAR:'Carolina Panthers',CHI:'Chicago Bears',CIN:'Cincinnati Bengals',CLE:'Cleveland Browns',DAL:'Dallas Cowboys',DEN:'Denver Broncos',DET:'Detroit Lions',GB:'Green Bay Packers',HOU:'Houston Texans',IND:'Indianapolis Colts',JAX:'Jacksonville Jaguars',KC:'Kansas City Chiefs',LV:'Las Vegas Raiders',LAC:'Los Angeles Chargers',LA:'Los Angeles Rams',LAR:'Los Angeles Rams',MIA:'Miami Dolphins',MIN:'Minnesota Vikings',NE:'New England Patriots',NO:'New Orleans Saints',NYG:'New York Giants',NYJ:'New York Jets',PHI:'Philadelphia Eagles',PIT:'Pittsburgh Steelers',SF:'San Francisco 49ers',SEA:'Seattle Seahawks',TB:'Tampa Bay Buccaneers',TEN:'Tennessee Titans',WAS:'Washington Commanders'};
 let side='offense',snapshot=null;const el=id=>document.getElementById(id);
 function fillMetrics(){const opts=metrics.filter(m=>m.side===side);el('metric').innerHTML=opts.map(m=>'<option value="'+m.key+'">'+m.label+'</option>').join('');}
