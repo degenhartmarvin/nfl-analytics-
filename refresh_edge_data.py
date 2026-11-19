@@ -294,7 +294,7 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=(), savant_rows=None, esp
             "defensive_snaps": snaps,
             "defensive_snap_share": snaps / snap_denominator if snap_denominator > 0 else None,
             "games_played": len(games[pid]),
-            "sacks": sacks, "pressures": pressures or None,
+            "sacks": sacks, "pressures": ((savant_rows.get(normalize_name(name)) or {}).get("savant_pressures") if (savant_rows.get(normalize_name(name)) or {}).get("savant_pressures") is not None else (pressures or None)),
             "pass_rush_snaps": (savant_rows.get(normalize_name(name)) or {}).get("pass_rush_snaps"),
             "hurries": pfr.get("hurries") or None, "knockdowns": pfr.get("knockdowns") or None,
             "blitzes": pfr.get("blitzes") or None,
@@ -306,7 +306,7 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=(), savant_rows=None, esp
             "sacks_per_game": sacks / len(games[pid]) if games[pid] else None,
             "sacks_per_defensive_snap": sacks / snaps if snaps > 0 else None,
             "sack_rate": sacks / (savant_rows[normalize_name(name)]["pass_rush_snaps"]) if normalize_name(name) in savant_rows and savant_rows[normalize_name(name)].get("pass_rush_snaps") else None,
-            "pressure_rate": pressures / (savant_rows[normalize_name(name)]["pass_rush_snaps"]) if pressures is not None and normalize_name(name) in savant_rows and savant_rows[normalize_name(name)].get("pass_rush_snaps") else None,
+            "pressure_rate": savant_rows[normalize_name(name)]["savant_pressures"] / savant_rows[normalize_name(name)]["pass_rush_snaps"] if normalize_name(name) in savant_rows and savant_rows[normalize_name(name)].get("pass_rush_snaps") and savant_rows[normalize_name(name)].get("savant_pressures") is not None else None,
             "pass_rush_win_rate": espn_rows.get("pass_rush_win_rate", {}).get(normalize_name(name)),
             "run_stop_win_rate": espn_rows.get("run_stop_win_rate", {}).get(normalize_name(name)),
             "pressures_per_game": pressures / len(games[pid]) if pressures is not None and games[pid] else None,
@@ -353,7 +353,7 @@ def main():
         "player_count": len(data), "players": data, "metrics": METRICS,
         "limitations": [
             "The combined group uses the roster positions DE, OLB and EDGE; public roster data does not reliably identify each team's defensive front, so some 4-3 off-ball OLB designations may be included.",
-            "Sack Rate and Pressure Rate use individual pass-rush snap counts from NFL/Savant; Sacks / Defensive Snaps is also shown separately. Pressure numerator remains the PFR charted pressure total.",
+            "Sack Rate and Pressure Rate use NFL/Savant pass-rush snaps and matching numerator fields; Sacks / Defensive Snaps is also shown separately. The displayed pressure total switches to NFL/Savant when available so its numerator matches Pressure Rate; otherwise it falls back to PFR.",
             "Quick Pressure Rate and Double-Team Rate remain blank because no reproducible public player-level 2026 feed is available. ESPN Win Rates are populated only for players in the published Edge top-20 (pass rush) and top-10 (run stop). No estimates are substituted."
             "PFR pressure totals are charted pressure counts. TFLs and QB hits are player-attributed play-by-play events."
         ]
