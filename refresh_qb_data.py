@@ -9,7 +9,7 @@ PBP_URL=f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_b
 PLAYERS_URL="https://github.com/nflverse/nflverse-data/releases/download/players/players.csv"
 OUT=os.environ.get("NFL_QB_OUTPUT","public/data/qb_players_2026.json")
 QBR_URL="https://github.com/nflverse/nflverse-data/releases/download/espn_data/qbr_season_level.csv"
-NGS_URL="https://github.com/nflverse/nflverse-data/releases/download/nextgen_stats/ngs_passing.csv"
+NGS_URL="https://github.com/nflverse/nflverse-data/releases/download/nextgen_stats/ngs_passing.csv.gz"
 
 def download(url):
     req=urllib.request.Request(url,headers={"User-Agent":"NFL-Analytics-QB-refresh/1.0"})
