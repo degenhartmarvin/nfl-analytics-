@@ -150,7 +150,7 @@ def parse_espn_win_rates(raw):
                 continue
             name = cells[2] if len(cells) >= 6 else cells[1]
             rate_cell = cells[4] if len(cells) >= 6 else cells[3]
-            match = re.search(r"(\\d+(?:\\.\\d+)?)\\s*%", rate_cell)
+            match = re.search(r"(\d+(?:\.\d+)?)\s*%", rate_cell)
             if match:
                 result[key][normalize_name(name)] = float(match.group(1)) / 100
     return result
