@@ -34,6 +34,8 @@ METRICS=[
  {"id":"false_start_penalties","name":"False Start Penalties","category":"Discipline","unit":"Penalties","higher_is_better":False},
  {"id":"tfls_allowed","name":"Tackles for Loss Allowed","category":"Run Blocking","unit":"TFLs","higher_is_better":False},
  {"id":"tfl_rate","name":"TFL Rate Allowed","category":"Run Blocking","unit":"% Runs","higher_is_better":False},
+ {"id":"negative_plays_allowed","name":"Negative Plays Allowed (Sacks + TFLs)","category":"Negative Plays","unit":"Plays","higher_is_better":False},
+ {"id":"negative_play_rate","name":"Negative Play Rate (Sacks + TFLs)","category":"Negative Plays","unit":"% Offensive Plays","higher_is_better":False},
  {"id":"rush_yards_before_contact","name":"Rush Yards Before Contact","category":"Run Blocking","unit":"Yards","higher_is_better":True},
  {"id":"yards_before_contact_per_carry","name":"Yards Before Contact per Carry","category":"Run Blocking","unit":"Yards/Carry","higher_is_better":True}
 ]
@@ -111,6 +113,8 @@ def calculate(rows, pfr_rush=None):
    "pressures_allowed":int(s["pressure_events"]),"pressure_rate":s["pressure_events"]/dropbacks if dropbacks else None,
    "rush_yards":int(s["rush_yards"]),"yards_per_carry":s["rush_yards"]/carries if carries else None,
    "tfls_allowed":int(s["tfls_allowed"]),"tfl_rate":s["tfls_allowed"]/carries if carries else None,
+   "negative_plays_allowed":int(s["sacks_allowed"]+s["tfls_allowed"]),
+   "negative_play_rate":(s["sacks_allowed"]+s["tfls_allowed"])/(dropbacks+carries) if (dropbacks+carries) else None,
    "rush_yards_before_contact":ybc_by_team.get(team) if pfr_rush else None,"yards_before_contact_per_carry":ybc_by_team.get(team)/carries if pfr_rush and carries else None,
    "run_success_rate":s["run_success_total"]/carries if carries else None,
    "stuff_rate":s["stuffed"]/carries if carries else None,
