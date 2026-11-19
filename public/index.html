@@ -93,18 +93,25 @@ const cbMetricList=[
 {key:'yards_per_target_allowed',label:'Yards per Target Allowed',cat:'Coverage Efficiency',format:'decimal',high:false,minTargets:15},
 {key:'yards_per_completion_allowed',label:'Yards per Completion Allowed',cat:'Coverage Efficiency',format:'decimal',high:false,minTargets:15},
 {key:'passer_rating_allowed',label:'Passer Rating Allowed',cat:'Coverage Efficiency',format:'decimal',high:false,minTargets:15},
+{key:'targets_per_100_defensive_snaps',label:'Targets per 100 Defensive Snaps',cat:'Coverage Efficiency',format:'decimal',high:false},
+{key:'yards_allowed_per_100_defensive_snaps',label:'Yards Allowed per 100 Defensive Snaps',cat:'Coverage Efficiency',format:'decimal',high:false},
+{key:'touchdown_rate_allowed',label:'TD Rate Allowed',cat:'Coverage Efficiency',format:'pct',high:false,minTargets:15},
+{key:'yac_per_reception_allowed',label:'YAC per Reception Allowed',cat:'Coverage Efficiency',format:'decimal',high:false,minTargets:15},
 {key:'average_depth_of_target',label:'Average Depth of Target',cat:'Coverage Profile',format:'decimal',high:null,minTargets:15},
 {key:'air_yards_allowed',label:'Air Yards Allowed',cat:'Coverage Profile',format:'number',high:false},
 {key:'yards_after_catch_allowed',label:'Yards After Catch Allowed',cat:'Coverage Profile',format:'number',high:false},
 {key:'interceptions',label:'Interceptions',cat:'Ball Skills',format:'number',high:true},
+{key:'interception_rate',label:'Interception Rate',cat:'Ball Skills',format:'pct',high:true,minTargets:15},
 {key:'passes_defended',label:'Passes Defended / PBUs',cat:'Ball Skills',format:'number',high:true},
+{key:'pass_breakup_rate',label:'Pass Breakup Rate',cat:'Ball Skills',format:'pct',high:true,minTargets:15},
+{key:'forced_incompletion_rate',label:'Forced Incompletion Rate (INT + PBU)',cat:'Ball Skills',format:'pct',high:true,minTargets:15},
 {key:'forced_fumbles',label:'Forced Fumbles',cat:'Ball Skills',format:'number',high:true},
-{key:'solo_tackles',label:'Solo Tackles',cat:'Tackling & Run Support',format:'number',high:true},
-{key:'assisted_tackles',label:'Assisted Tackles',cat:'Tackling & Run Support',format:'number',high:true},
-{key:'combined_tackles',label:'Combined Tackles',cat:'Tackling & Run Support',format:'number',high:true},
-{key:'tackles_for_loss',label:'Tackles for Loss',cat:'Tackling & Run Support',format:'number',high:true},
-{key:'missed_tackles',label:'Missed Tackles',cat:'Tackling & Run Support',format:'number',high:false},
-{key:'missed_tackle_rate',label:'Missed Tackle Rate',cat:'Tackling & Run Support',format:'pct',high:false},
+{key:'solo_tackles',label:'Solo Tackles',cat:'Tackling',format:'number',high:true},
+{key:'assisted_tackles',label:'Assisted Tackles',cat:'Tackling',format:'number',high:true},
+{key:'combined_tackles',label:'Combined Tackles',cat:'Tackling',format:'number',high:true},
+{key:'missed_tackles',label:'Missed Tackles',cat:'Tackling',format:'number',high:false},
+{key:'missed_tackle_rate',label:'Missed Tackle Rate',cat:'Tackling',format:'pct',high:false},
+{key:'missed_tackles_per_game',label:'Missed Tackles per Game',cat:'Tackling',format:'decimal',high:false},
 {key:'sacks',label:'Sacks',cat:'Pass Rush',format:'decimal',high:true},
 {key:'qb_hits',label:'QB Hits',cat:'Pass Rush',format:'number',high:true},
 {key:'pressures',label:'Pressures',cat:'Pass Rush',format:'number',high:true},
@@ -222,11 +229,11 @@ if(!Array.isArray(p.players))throw Error('Spielerdatenformat ungültig');playerS
 function renderPlayerRanking(){
 if(!playerSnapshot)return;
 const list=activeMetricList(),metric=list.find(m=>m.key===el('playerMetric').value)||list[0];
-let rows=[...playerSnapshot.players].filter(p=>p[metric.key]!=null&&(activePosition()!=='CB'||Number(p.defensive_snap_share)>=0.40)&&(!metric.minTargets||Number(p.targets)>=metric.minTargets)&&(!metric.minReceptions||Number(p.receptions)>=metric.minReceptions)&&(!metric.minAttempts||Number(p.attempts)>=metric.minAttempts)&&(!metric.minCarries||Number(p.carries)>=metric.minCarries));
+let rows=[...playerSnapshot.players].filter(p=>p[metric.key]!=null&&(activePosition()!=='CB'||Number(p.defensive_snap_share)>=0.50)&&(!metric.minTargets||Number(p.targets)>=metric.minTargets)&&(!metric.minReceptions||Number(p.receptions)>=metric.minReceptions)&&(!metric.minAttempts||Number(p.attempts)>=metric.minAttempts)&&(!metric.minCarries||Number(p.carries)>=metric.minCarries));
 rows.sort((a,b)=>metric.high?Number(b[metric.key])-Number(a[metric.key]):Number(a[metric.key])-Number(b[metric.key]));
 el('playerList').innerHTML=rows.map((p,i)=>'<div class="player-row" role="button" tabindex="0" data-player="'+p.player_id+'"><div class="player-rank">#'+(i+1)+'</div><div><div class="player-name">'+p.player_name+'</div><div class="player-team">'+(p.team||'—')+' · '+(activePosition()==='QB'?'Quarterback':activePosition()==='RB'?'Running Back':activePosition()==='CB'?'Cornerback':'Wide Receiver')+'</div></div><div class="player-value">'+playerFmt(p[metric.key],metric.format)+'</div></div>').join('')||'<div class="notice">Für diese Statistik sind aktuell keine Daten verfügbar.</div>';
 el('playerList').querySelectorAll('[data-player]').forEach(node=>{node.addEventListener('click',()=>showPlayerDetail(node.dataset.player));node.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();showPlayerDetail(node.dataset.player);}});});
-el('playerStatus').className='status ok';el('playerStatus').textContent=playerSnapshot.season+' Saison · '+rows.length+' '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':activePosition()==='CB'?'CB':'WR')+' im Ranking'+(activePosition()==='CB'?' · Mindestens 40 % Defensive Snap Share':metric.minAttempts?' · Mindestwert: '+metric.minAttempts+' Passversuche':metric.minTargets?' · Mindestwert: '+metric.minTargets+' Targets':metric.minReceptions?' · Mindestwert: '+metric.minReceptions+' Receptions':metric.minCarries?' · Mindestwert: '+metric.minCarries+' Carries':'')+' · '+playerSnapshot.source+' · aktualisiert '+new Date(playerSnapshot.updated_at).toLocaleString('de-DE');
+el('playerStatus').className='status ok';el('playerStatus').textContent=playerSnapshot.season+' Saison · '+rows.length+' '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':activePosition()==='CB'?'CB':'WR')+' im Ranking'+(activePosition()==='CB'?' · Mindestens 50 % Defensive Snap Share':metric.minAttempts?' · Mindestwert: '+metric.minAttempts+' Passversuche':metric.minTargets?' · Mindestwert: '+metric.minTargets+' Targets':metric.minReceptions?' · Mindestwert: '+metric.minReceptions+' Receptions':metric.minCarries?' · Mindestwert: '+metric.minCarries+' Carries':'')+' · '+playerSnapshot.source+' · aktualisiert '+new Date(playerSnapshot.updated_at).toLocaleString('de-DE');
 }
 function showPlayerDetail(playerId){
 const p=playerSnapshot?.players.find(x=>x.player_id===playerId);if(!p)return;
