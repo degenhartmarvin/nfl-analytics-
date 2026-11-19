@@ -8,6 +8,7 @@ SEASON=int(os.environ.get("NFL_SEASON","2026"))
 PBP_URL=f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 PLAYERS_URL="https://github.com/nflverse/nflverse-data/releases/download/players/players.csv"
 COVERAGE_URL="https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_season_def.csv"
+SNAPS_URL=f"https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{SEASON}.csv"
 OUT=os.environ.get("NFL_CB_OUTPUT","public/data/cb_players_2026.json")
 
 METRICS=[
@@ -96,7 +97,16 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
 
  # PFR advanced defense data is keyed by PFR ID, so join through nflverse's
  # player registry rather than fuzzy-matching names.
- snaps_by_id=defaultdict(float)\n for row in snap_rows:\n  if str(row.get("season",""))!=str(SEASON) or str(row.get("game_type","REG")).upper() not in ("REG", "REGULAR"):\n   continue\n  pfr_id=row.get("pfr_player_id") or row.get("player_pfr_id")\n  pid=pfr_to_gsis.get(pfr_id)\n  snaps=num(row.get("defense_snaps"))\n  if pid and snaps is not None: snaps_by_id[pid]+=snaps\n\n coverage_by_id=defaultdict(list)
+ snaps_by_id=defaultdict(float)
+ for row in snap_rows:
+  if str(row.get("season",""))!=str(SEASON) or str(row.get("game_type","REG")).upper() not in ("REG", "REGULAR"):
+   continue
+  pfr_id=row.get("pfr_player_id") or row.get("player_pfr_id")
+  pid=pfr_to_gsis.get(pfr_id)
+  snaps=num(row.get("defense_snaps"))
+  if pid and snaps is not None: snaps_by_id[pid]+=snaps
+
+ coverage_by_id=defaultdict(list)
  for row in coverage_rows:
   if str(row.get("season",""))!=str(SEASON): continue
   pid=pfr_to_gsis.get(row.get("pfr_id"))
@@ -166,7 +176,8 @@ def main():
  pbp=parse(download(PBP_URL))
  players=parse(download(PLAYERS_URL))
  coverage=parse(download(COVERAGE_URL))
- data=build(pbp,players,coverage)
+ snaps=parse(download(SNAPS_URL))
+ data=build(pbp,players,coverage,snaps)
  if not data: raise RuntimeError("No CB defensive-event data produced; refusing to overwrite snapshot.")
  payload={"season":SEASON,"source":"nflverse PFR advanced defense + play-by-play + players registry",
   "source_url":COVERAGE_URL,"snap_counts_url":SNAPS_URL,"updated_at":datetime.now(timezone.utc).isoformat(),
