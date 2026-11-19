@@ -2,6 +2,31 @@ import unittest
 from refresh_cb_data import build
 
 class CornerbackPipelineTests(unittest.TestCase):
+    def test_weekly_coverage_rows_are_cumulatively_rebuilt(self):
+        players=[
+          {"gsis_id":"CB1","pfr_id":"PFR1","position":"CB","display_name":"Corner One"}
+        ]
+        weekly=[
+          {"season":"2026","week":"1","game_type":"REG","game_id":"G1","pfr_player_id":"PFR1","team":"CIN","def_targets":"20","def_completions_allowed":"10","def_yards_allowed":"100","def_receiving_td_allowed":"1","def_passer_rating_allowed":"60","def_adot":"8","def_air_yards_completed":"120","def_yards_after_catch":"30","def_times_blitzed":"5","def_times_hurried":"2","def_times_hitqb":"1","def_pressures":"4","def_missed_tackles":"2","def_missed_tackle_pct":"0.10","def_tackles_combined":"18"},
+          {"season":"2026","week":"2","game_type":"REG","game_id":"G2","pfr_player_id":"PFR1","team":"CIN","def_targets":"10","def_completions_allowed":"5","def_yards_allowed":"80","def_receiving_td_allowed":"0","def_passer_rating_allowed":"90","def_adot":"10","def_air_yards_completed":"90","def_yards_after_catch":"20","def_times_blitzed":"3","def_times_hurried":"1","def_times_hitqb":"0","def_pressures":"2","def_missed_tackles":"1","def_missed_tackle_pct":"0.20","def_tackles_combined":"9"}
+        ]
+        snaps=[
+          {"season":"2026","game_type":"REG","week":"1","game_id":"G1","team":"CIN","pfr_player_id":"PFR1","defense_snaps":"125","defense_pct":"0.625"},
+          {"season":"2026","game_type":"REG","week":"2","game_id":"G2","team":"CIN","pfr_player_id":"PFR1","defense_snaps":"50","defense_pct":"0.5"}
+        ]
+        data=build([],players,weekly,snaps)
+        one=data[0]
+        self.assertEqual(one["defensive_snaps"],175)
+        self.assertEqual(one["targets_allowed"],30)
+        self.assertEqual(one["completions_allowed"],15)
+        self.assertEqual(one["yards_allowed"],180)
+        self.assertEqual(one["touchdowns_allowed"],1)
+        self.assertEqual(one["pressures"],6)
+        self.assertEqual(one["missed_tackles"],3)
+        self.assertAlmostEqual(one["completion_rate_allowed"],0.5)
+        self.assertAlmostEqual(one["yards_per_target_allowed"],6.0)
+        self.assertAlmostEqual(one["passer_rating_allowed"],70.0)
+
     def test_defensive_events_and_rankings(self):
         players=[
           {"gsis_id":"CB1","pfr_id":"PFR1","position":"CB","display_name":"Corner One"},
