@@ -16,7 +16,7 @@ Mobile-friendly NFL team analytics dashboard with automated 2026 play-by-play da
 
 **Wide Receivers:** Receiving volume, targets/share, catch rate, YAC, EPA/target, success rate, explosive receptions and drops.
 
-**Quarterbacks:** Passing volume, completion rate, passer rating, YPA/AY/A/ANY/A, EPA/dropback, success rate, CPOE, air yards/aDOT, deep passing, sacks, interceptions, fumbles and rushing production.
+**Quarterbacks:** Passing volume, completion rate, passer rating, ESPN Total QBR, time to throw (NFL Next Gen Stats), YPA/AY/A/ANY/A, EPA/dropback, success rate, CPOE, air yards/aDOT, deep passing, sacks, interceptions, fumbles and rushing production.
 
 ## Formulas
 - Explosive pass: eligible pass plays gaining 20 or more yards.
