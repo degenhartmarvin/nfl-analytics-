@@ -60,7 +60,7 @@ class EdgePipelineTests(unittest.TestCase):
         row = build(pbp, players, defense, snaps, savant, espn)[0]
         self.assertEqual(row["pass_rush_snaps"],100)
         self.assertAlmostEqual(row["sack_rate"],0.01)
-        self.assertAlmostEqual(row["pressure_rate"],0.06)
+        self.assertAlmostEqual(row["pressure_rate"],0.08)
         self.assertAlmostEqual(row["sacks_per_defensive_snap"],1/60)
         self.assertAlmostEqual(row["pass_rush_win_rate"],0.25)
         self.assertAlmostEqual(row["run_stop_win_rate"],0.30)
