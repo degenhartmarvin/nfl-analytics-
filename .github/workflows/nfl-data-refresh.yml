@@ -48,7 +48,11 @@ jobs:
             echo "Snapshot unchanged."
           else
             git commit -m "Update NFL 2026 team, WR and QB data snapshots"
-            git push
+            # Another workflow or a manual GitHub edit may have updated main
+            # while this job was generating the data. Rebase before pushing.
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
           fi
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
