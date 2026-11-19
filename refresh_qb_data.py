@@ -8,6 +8,8 @@ SEASON=int(os.environ.get("NFL_SEASON","2026"))
 PBP_URL=f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 PLAYERS_URL="https://github.com/nflverse/nflverse-data/releases/download/players/players.csv"
 OUT=os.environ.get("NFL_QB_OUTPUT","public/data/qb_players_2026.json")
+QBR_URL="https://github.com/nflverse/nflverse-data/releases/download/espn_data/qbr_season_level.csv"
+NGS_URL="https://github.com/nflverse/nflverse-data/releases/download/nextgen_stats/ngs_passing.csv"
 
 def download(url):
     req=urllib.request.Request(url,headers={"User-Agent":"NFL-Analytics-QB-refresh/1.0"})
@@ -25,7 +27,30 @@ def num(v):
 
 def truth(v): return str(v).strip().lower() in ("1","true","t","yes")
 
-def build(pbp, player_rows):
+def norm_name(value):
+    return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in str(value or "")).split())
+
+def supplemental_maps(qbr_rows, ngs_rows, season):
+    qbr={}
+    for row in qbr_rows:
+        if str(row.get("season","")) != str(season): continue
+        if str(row.get("season_type","")).lower() not in ("regular","reg","regular season",""): continue
+        name=norm_name(row.get("name_display") or row.get("name") or row.get("name_short"))
+        value=num(row.get("qbr_total"))
+        if name and value is not None: qbr[name]=value
+    ttt={}
+    # nflverse NGS publishes week=0 as the season-to-date regular-season aggregate.
+    for row in ngs_rows:
+        if str(row.get("season","")) != str(season): continue
+        week=str(row.get("week","")).strip()
+        if week not in ("0","0.0"): continue
+        if str(row.get("season_type","")).lower() not in ("reg","regular","regular season",""): continue
+        name=norm_name(row.get("player_display_name") or row.get("player_name") or row.get("player"))
+        value=num(row.get("avg_time_to_throw") or row.get("time_to_throw"))
+        if name and value is not None: ttt[name]=value
+    return qbr,ttt
+
+def build(pbp, player_rows, qbr_rows=None, ngs_rows=None):
     roster={}
     for p in player_rows:
         pid=p.get("gsis_id") or p.get("player_id")
@@ -113,6 +138,8 @@ def build(pbp, player_rows):
             rating=((a+b+c+d)/6)*100
         out.append({
             "player_id":pid,"player_name":name,"team":team,
+            "qbr_total":qbr_map.get(norm_name(name)),
+            "time_to_throw":ttt_map.get(norm_name(name)),
             "attempts":int(att),"completions":int(comp),"passing_yards":int(yds),
             "passing_tds":int(td),"interceptions":int(ints),"passing_first_downs":int(s["first_downs"]),
             "completion_rate":c_pct,"yards_per_attempt":ypa,
@@ -150,7 +177,7 @@ def build(pbp, player_rows):
         "net_yards_per_attempt":True,"any_a":True,"dropbacks":True,"sacks_taken":False,
         "sack_rate":False,"epa_per_dropback":True,"pass_epa_per_attempt":True,
         "success_rate":True,"cpoe":True,"air_yards_total":True,
-        "average_depth_of_target":True,"deep_attempts":True,"deep_completions":True,
+        "average_depth_of_target":True,"qbr_total":True,"time_to_throw":False,"deep_attempts":True,"deep_completions":True,
         "deep_completion_rate":True,"explosive_completions":True,
         "rush_attempts":True,"rushing_yards":True,"rushing_tds":True,
         "yards_per_rush":True,"rushing_first_downs":True,"explosive_rushes":True,
@@ -160,7 +187,7 @@ def build(pbp, player_rows):
     min_att={"completion_rate","yards_per_attempt","yards_per_completion","td_rate",
         "interception_rate","passer_rating","adjusted_yards_per_attempt","net_yards_per_attempt",
         "any_a","sack_rate","epa_per_dropback","pass_epa_per_attempt","success_rate","cpoe",
-        "average_depth_of_target","deep_completion_rate"}
+        "average_depth_of_target","deep_completion_rate","qbr_total","time_to_throw"}
     for metric,is_high in higher.items():
         valid=[x for x in out if x.get(metric) is not None and (metric not in min_att or x["attempts"]>=100)]
         valid.sort(key=lambda x:x[metric],reverse=is_high)
@@ -174,7 +201,7 @@ def main():
     pbp=parse(download(PBP_URL)); players=parse(download(PLAYERS_URL))
     data=build(pbp,players)
     if not data: raise RuntimeError("No QB data produced; refusing to overwrite snapshot.")
-    payload={"season":SEASON,"source":"nflverse play-by-play + players registry",
+    payload={"season":SEASON,"source":"nflverse play-by-play + ESPN Total QBR + NFL Next Gen Stats + players registry",\n        "supplemental_sources":{"qbr":QBR_URL,"time_to_throw":NGS_URL},
         "source_url":PBP_URL,"updated_at":datetime.now(timezone.utc).isoformat(),
         "player_count":len(data),"players":data}
     os.makedirs(os.path.dirname(OUT) or ".",exist_ok=True)
