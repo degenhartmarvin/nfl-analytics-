@@ -171,7 +171,7 @@ function activePosition(){return el('playerPosition').value||'WR';}
 function activeMetricList(){return activePosition()==='QB'?qbMetricList:activePosition()==='RB'?rbMetricList:wrMetricList;}
 function playerFmt(v,f){if(v==null||!Number.isFinite(Number(v)))return'—';const n=Number(v);if(f==='pct')return(n*100).toFixed(1)+'%';if(f==='signed')return(n>=0?'+':'')+n.toFixed(2);if(f==='signed1')return(n>=0?'+':'')+n.toFixed(1)+' pp';if(f==='decimal')return n.toFixed(2);return Math.round(n).toLocaleString('de-DE');}
 function loadPlayerView(){
-el('overview').hidden=true;el('teamDetail').hidden=true;el('playerDetail').hidden=true;el('playerView').hidden=false;el('playersTab').classList.add('active');
+el('overview').hidden=true;el('teamDetail').hidden=true;el('playerDetail').hidden=true;el('olineView').hidden=true;el('olineDetail').hidden=true;el('playerView').hidden=false;el('playersTab').classList.add('active');
 document.querySelectorAll('.tab[data-group]').forEach(b=>b.classList.remove('active'));
 const pos=activePosition(),list=activeMetricList();
 el('playerDetailBack').textContent='← Zurück zum '+(pos==='QB'?'QB':pos==='RB'?'RB':'WR')+'-Ranking';
@@ -216,7 +216,7 @@ function closeTeam(){el('teamDetail').hidden=true;el('overview').hidden=false;wi
 el('backBtn').addEventListener('click',closeTeam);
 el('tbody').addEventListener('click',event=>{const row=event.target.closest('tr[data-team]');if(row&&row.dataset.team)showTeam(row.dataset.team);});
 el('tbody').addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){const row=event.target.closest('tr[data-team]');if(row){event.preventDefault();showTeam(row.dataset.team);}}});
-document.querySelectorAll('.tab[data-group]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');side=b.dataset.group;el('playerView').hidden=true;el('playerDetail').hidden=true;el('teamDetail').hidden=true;el('overview').hidden=false;el('playersTab').classList.remove('active');fillMetrics();render();}));el('metric').addEventListener('change',render);el('search').addEventListener('input',render);el('sort').addEventListener('change',render);fillMetrics();
+document.querySelectorAll('.tab[data-group]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');side=b.dataset.group;el('playerView').hidden=true;el('playerDetail').hidden=true;el('teamDetail').hidden=true;el('olineView').hidden=true;el('olineDetail').hidden=true;el('overview').hidden=false;el('playersTab').classList.remove('active');fillMetrics();render();}));el('metric').addEventListener('change',render);el('search').addEventListener('input',render);el('sort').addEventListener('change',render);fillMetrics();
 let olineSnapshot=null,olineMetricKey='sack_rate';
 function fmtOline(v,unit){if(v==null||!Number.isFinite(Number(v)))return'—';const n=Number(v);if(unit==='% Dropbacks'||unit==='% Runs'||unit==='% Attempts')return(n*100).toFixed(1)+'%';if(unit==='EPA/Run')return(n>=0?'+':'')+n.toFixed(2);if(unit==='Yards/Carry'||unit==='Yards/Dropback')return n.toFixed(2);return Math.round(n).toLocaleString('de-DE');}
 function showOlineView(){
