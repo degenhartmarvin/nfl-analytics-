@@ -1,5 +1,5 @@
 import unittest
-from refresh_oline_data import calculate
+from refresh_oline_data import calculate, TEAMS
 
 class OLinePipelineTests(unittest.TestCase):
     def setUp(self):
@@ -24,6 +24,11 @@ class OLinePipelineTests(unittest.TestCase):
         self.rows.append({"posteam":"CIN","play_type":"no_play","yards_gained":"0","epa":"0",
             "success":"0","pass_attempt":"0","sack":"0","rush_attempt":"0","game_id":"G1",
             "penalty":"1","penalty_team":"CIN","penalty_type":"False Start","penalty_yards":"5"})
+        for team in TEAMS:
+            if team!="CIN":
+                self.rows.append({"posteam":team,"play_type":"run","yards_gained":"3","epa":"0.1",
+                    "success":"1","pass_attempt":"0","sack":"0","rush_attempt":"1","game_id":team+"G1",
+                    "penalty":"0","penalty_team":team,"penalty_type":"","penalty_yards":"0"})
 
     def test_pass_protection_and_rushing_outcomes(self):
         data=calculate(self.rows)
