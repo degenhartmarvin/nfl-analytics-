@@ -4,7 +4,8 @@
 DE and OLB roster designations are grouped as Edge Rusher. Interior DT/NT players are excluded.
 Unavailable charting metrics are kept null; they are never estimated from unrelated statistics.
 """
-import csv, gzip, io, json, os, urllib.request
+import csv, gzip, io, json, os, re, urllib.request, unicodedata
+from html.parser import HTMLParser
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -14,15 +15,19 @@ PLAYERS_URL = "https://github.com/nflverse/nflverse-data/releases/download/playe
 DEF_URL = f"https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_week_def_{SEASON}.csv"
 SNAPS_URL = f"https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{SEASON}.csv"
 OUT = os.environ.get("NFL_EDGE_OUTPUT", "public/data/edge_players_2026.json")
+SAVANT_URL = f"https://www.nflsavant.com/leaderboard?season={SEASON}&tab=pressure"
+ESPN_WIN_RATE_URL = "https://nfllines.com/defensive-line-ratings/players/"
 
 METRICS = [
  {"key":"sacks","label":"Sacks","category":"Pass-Rush-Produktion","format":"decimal","higher_is_better":True},
- {"key":"sack_rate","label":"Sack Rate","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"Nicht verfügbar: pass-rush snaps fehlen in den verwendeten öffentlichen Rohdaten."},
+ {"key":"sack_rate","label":"Sack Rate (Sacks / Pass-Rush Snaps)","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True},
+ {"key":"sacks_per_defensive_snap","label":"Sacks / Defensive Snaps","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True},
+ {"key":"pass_rush_snaps","label":"Pass-Rush Snaps","category":"Pass-Rush-Einsatz","format":"number","higher_is_better":True},
  {"key":"pressures","label":"Pressures","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
  {"key":"hurries","label":"QB Hurries","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
  {"key":"knockdowns","label":"QB Knockdowns","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
  {"key":"blitzes","label":"Blitzes","category":"Pass-Rush-Einsatz","format":"number","higher_is_better":True},
- {"key":"pressure_rate","label":"Pressure Rate","category":"Pressure & Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"Nicht verfügbar: pass-rush snaps fehlen; wird nicht durch defensive snaps ersetzt."},
+ {"key":"pressure_rate","label":"Pressure Rate (Pressures / Pass-Rush Snaps)","category":"Pressure & Pass-Rush-Effizienz","format":"percent","higher_is_better":True},
  {"key":"qb_hits","label":"QB Hits","category":"Pass-Rush-Produktion","format":"number","higher_is_better":True},
  {"key":"tfls","label":"Tackles for Loss (TFLs)","category":"Disruptive Plays","format":"number","higher_is_better":True},
  {"key":"forced_fumbles","label":"Forced Fumbles","category":"Disruptive Plays","format":"number","higher_is_better":True},
@@ -37,8 +42,8 @@ METRICS = [
  {"key":"quick_pressure_rate","label":"Quick Pressure Rate (unter 2,5 Sek.)","category":"Pressure & Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"Nicht verfügbar: die NFL Next Gen Stats Quick-Pressure-Ereignisse liegen nicht im genutzten PFR-Wochendatensatz."},
  {"key":"negative_plays_forced_rate","label":"Negative Plays Forced Rate (Sacks + TFLs je Defensive Snap)","category":"Disruptive Plays","format":"percent","higher_is_better":True},
  {"key":"double_team_rate","label":"Double-Team Rate","category":"Gegnerische Aufmerksamkeit","format":"percent","higher_is_better":True,"availability_note":"Nicht verfügbar: keine verlässlichen individuellen Double-Team-Snap-Zahlen im verwendeten öffentlichen Datensatz."},
- {"key":"pass_rush_win_rate","label":"Pass Rush Win Rate (ESPN)","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"ESPN veröffentlicht nur eine begrenzte Ranglisten-Abdeckung; kein verlässlicher vollständiger Spieler-Datensatz im automatisierten Pipeline-Feed."},
- {"key":"run_stop_win_rate","label":"Run Stop Win Rate (ESPN)","category":"Run Defense","format":"percent","higher_is_better":True,"availability_note":"ESPN veröffentlicht nur eine begrenzte Ranglisten-Abdeckung; kein verlässlicher vollständiger Spieler-Datensatz im automatisierten Pipeline-Feed."}
+ {"key":"pass_rush_win_rate","label":"Pass Rush Win Rate (ESPN, Top 20)","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"ESPN veröffentlicht nur die Top 20 der Edge Rusher; Spieler außerhalb der Liste bleiben leer."},
+ {"key":"run_stop_win_rate","label":"Run Stop Win Rate (ESPN, Top 10)","category":"Run Defense","format":"percent","higher_is_better":True,"availability_note":"ESPN veröffentlicht nur die Top 10 der Edge Rusher; Spieler außerhalb der Liste bleiben leer."}
 ]
 
 def download(url):
@@ -51,6 +56,113 @@ def parse(raw):
         raw = gzip.decompress(raw)
     return list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
 
+
+class StatTableParser(HTMLParser):
+    """Small standard-library HTML table reader used by the scheduled refresh."""
+    def __init__(self):
+        super().__init__()
+        self.tables = []
+        self.heading = ""
+        self.heading_parts = []
+        self.in_heading = False
+        self.table = None
+        self.row = None
+        self.cell = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            self.in_heading = True
+            self.heading_parts = []
+        elif tag == "table":
+            self.table = {"heading": self.heading, "rows": []}
+            self.tables.append(self.table)
+        elif tag == "tr" and self.table is not None:
+            self.row = []
+        elif tag in ("td", "th") and self.row is not None:
+            self.cell = []
+
+    def handle_data(self, data):
+        value = " ".join(data.split())
+        if not value:
+            return
+        if self.in_heading:
+            self.heading_parts.append(value)
+        if self.cell is not None:
+            self.cell.append(value)
+
+    def handle_endtag(self, tag):
+        if tag in ("h1", "h2", "h3", "h4", "h5", "h6") and self.in_heading:
+            self.heading = " ".join(self.heading_parts).strip()
+            self.in_heading = False
+        elif tag in ("td", "th") and self.cell is not None and self.row is not None:
+            self.row.append(" ".join(self.cell).strip())
+            self.cell = None
+        elif tag == "tr" and self.row is not None and self.table is not None:
+            if self.row:
+                self.table["rows"].append(self.row)
+            self.row = None
+        elif tag == "table":
+            self.table = None
+
+def normalize_name(value):
+    value = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]", "", value)
+
+def parse_savant(raw):
+    parser = StatTableParser()
+    parser.feed(raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw)
+    found = {}
+    for table in parser.tables:
+        for cells in table["rows"]:
+            # Rank, player, position, team, pressure %, pressures, sacks, QB hits, pass-rush snaps, snap share
+            if len(cells) < 9 or not cells[0].strip().isdigit():
+                continue
+            position = cells[2].upper()
+            if not any(position.startswith(x) for x in ("EDGE", "DE", "OLB")):
+                continue
+            name = cells[1]
+            pressure_count = num(cells[5])
+            sacks = num(cells[6])
+            rush_snaps = num(cells[8].replace(",", ""))
+            if rush_snaps and rush_snaps > 0:
+                found[normalize_name(name)] = {
+                    "pass_rush_snaps": rush_snaps,
+                    "savant_pressures": pressure_count,
+                    "savant_sacks": sacks
+                }
+    return found
+
+def parse_espn_win_rates(raw):
+    parser = StatTableParser()
+    parser.feed(raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw)
+    result = {"pass_rush_win_rate": {}, "run_stop_win_rate": {}}
+    for table in parser.tables:
+        heading = table["heading"].lower()
+        if "edge rushers" not in heading:
+            continue
+        key = "pass_rush_win_rate" if "pass rush win rate" in heading else (
+            "run_stop_win_rate" if "run stop win rate" in heading else None
+        )
+        if not key:
+            continue
+        for cells in table["rows"]:
+            if len(cells) < 5 or not cells[0].strip().isdigit():
+                continue
+            name = cells[2] if len(cells) >= 6 else cells[1]
+            rate_cell = cells[4] if len(cells) >= 6 else cells[3]
+            match = re.search(r"(\\d+(?:\\.\\d+)?)\\s*%", rate_cell)
+            if match:
+                result[key][normalize_name(name)] = float(match.group(1)) / 100
+    return result
+
+def optional_download(url):
+    try:
+        return download(url)
+    except Exception as exc:
+        print(f"Optional advanced source unavailable ({url}): {exc}")
+        return None
+
+
 def num(value):
     try:
         if value is None or str(value).strip() in ("", "NA", "NaN"):
@@ -59,7 +171,9 @@ def num(value):
     except (TypeError, ValueError):
         return None
 
-def build(pbp, player_rows, defense_rows=(), snap_rows=()):
+def build(pbp, player_rows, defense_rows=(), snap_rows=(), savant_rows=None, espn_rows=None):
+    savant_rows = savant_rows or {}
+    espn_rows = espn_rows or {"pass_rush_win_rate": {}, "run_stop_win_rate": {}}
     roster = {}
     for player in player_rows:
         position = str(player.get("position") or "").upper().strip()
@@ -181,6 +295,7 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=()):
             "defensive_snap_share": snaps / snap_denominator if snap_denominator > 0 else None,
             "games_played": len(games[pid]),
             "sacks": sacks, "pressures": pressures or None,
+            "pass_rush_snaps": (savant_rows.get(normalize_name(name)) or {}).get("pass_rush_snaps"),
             "hurries": pfr.get("hurries") or None, "knockdowns": pfr.get("knockdowns") or None,
             "blitzes": pfr.get("blitzes") or None,
             "qb_hits": int(s["qb_hits"]), "tfls": int(tfls),
@@ -189,13 +304,18 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=()):
             "missed_tackles": missed_tackles if tackle_attempts > 0 else None,
             "missed_tackle_rate": missed_tackles / tackle_attempts if tackle_attempts > 0 else None,
             "sacks_per_game": sacks / len(games[pid]) if games[pid] else None,
+            "sacks_per_defensive_snap": sacks / snaps if snaps > 0 else None,
+            "sack_rate": sacks / (savant_rows[normalize_name(name)]["pass_rush_snaps"]) if normalize_name(name) in savant_rows and savant_rows[normalize_name(name)].get("pass_rush_snaps") else None,
+            "pressure_rate": pressures / (savant_rows[normalize_name(name)]["pass_rush_snaps"]) if pressures is not None and normalize_name(name) in savant_rows and savant_rows[normalize_name(name)].get("pass_rush_snaps") else None,
+            "pass_rush_win_rate": espn_rows.get("pass_rush_win_rate", {}).get(normalize_name(name)),
+            "run_stop_win_rate": espn_rows.get("run_stop_win_rate", {}).get(normalize_name(name)),
             "pressures_per_game": pressures / len(games[pid]) if pressures is not None and games[pid] else None,
             "tfls_per_game": tfls / len(games[pid]) if games[pid] else None,
             "negative_plays_forced": negative_plays,
             "negative_plays_forced_rate": negative_plays / snaps if snaps > 0 else None,
             # Do not invent denominators or charting values that are absent from source data.
-            "sack_rate": None, "pressure_rate": None, "quick_pressure_rate": None,
-            "double_team_rate": None, "pass_rush_win_rate": None, "run_stop_win_rate": None
+            "quick_pressure_rate": None,
+            "double_team_rate": None
         }
         output.append(row)
 
@@ -217,19 +337,24 @@ def main():
     players = parse(download(PLAYERS_URL))
     defense = parse(download(DEF_URL))
     snaps = parse(download(SNAPS_URL))
-    data = build(pbp, players, defense, snaps)
+    savant_raw = optional_download(SAVANT_URL)
+    espn_raw = optional_download(ESPN_WIN_RATE_URL)
+    savant_rows = parse_savant(savant_raw) if savant_raw else {}
+    espn_rows = parse_espn_win_rates(espn_raw) if espn_raw else {"pass_rush_win_rate": {}, "run_stop_win_rate": {}}
+    data = build(pbp, players, defense, snaps, savant_rows, espn_rows)
     if not data:
         raise RuntimeError("No edge-rusher data produced; refusing to overwrite snapshot.")
     payload = {
         "season": SEASON,
-        "source": "nflverse player registry + play-by-play + weekly PFR advanced defense + snap counts",
+        "source": "nflverse PBP/PFR/snap counts + NFL/Savant pass-rush snaps + ESPN win-rate rankings via NFL Lines",
+        "advanced_sources": {"pass_rush_snaps": SAVANT_URL, "espn_win_rates": ESPN_WIN_RATE_URL},
         "source_url": DEF_URL, "snap_counts_url": SNAPS_URL,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "player_count": len(data), "players": data, "metrics": METRICS,
         "limitations": [
             "The combined group uses the roster positions DE, OLB and EDGE; public roster data does not reliably identify each team's defensive front, so some 4-3 off-ball OLB designations may be included.",
-            "Sack rate and pressure rate per pass-rush snap are not calculated because the selected source files do not provide individual pass-rush snap counts.",
-            "Quick pressure rate, double-team rate, ESPN pass-rush win rate and ESPN run-stop win rate remain blank until a reproducible player-level feed is available. No estimates or proxy values are substituted.",
+            "Sack Rate and Pressure Rate use individual pass-rush snap counts from NFL/Savant; Sacks / Defensive Snaps is also shown separately. Pressure numerator remains the PFR charted pressure total.",
+            "Quick Pressure Rate and Double-Team Rate remain blank because no reproducible public player-level 2026 feed is available. ESPN Win Rates are populated only for players in the published Edge top-20 (pass rush) and top-10 (run stop). No estimates are substituted."
             "PFR pressure totals are charted pressure counts. TFLs and QB hits are player-attributed play-by-play events."
         ]
     }
