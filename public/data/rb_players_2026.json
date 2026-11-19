@@ -6,7 +6,7 @@
     "ngs": "https://github.com/nflverse/nflverse-data/releases/download/nextgen_stats/ngs_rushing.csv.gz",
     "pfr": "https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_season_rush.csv.gz"
   },
-  "updated_at": "2026-11-19T11:27:10.501050+00:00",
+  "updated_at": "2026-11-19T11:36:16.980577+00:00",
   "player_count": 137,
   "players": [
     {
