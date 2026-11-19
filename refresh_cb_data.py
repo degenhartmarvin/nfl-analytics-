@@ -8,7 +8,6 @@ SEASON=int(os.environ.get("NFL_SEASON","2026"))
 PBP_URL=f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 PLAYERS_URL="https://github.com/nflverse/nflverse-data/releases/download/players/players.csv"
 COVERAGE_URL="https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_season_def.csv"
-SNAPS_URL=f"https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{SEASON}.csv"
 OUT=os.environ.get("NFL_CB_OUTPUT","public/data/cb_players_2026.json")
 
 METRICS=[
@@ -22,8 +21,7 @@ METRICS=[
  {"key":"qb_hits","label":"QB Hits","category":"Pass Rush","format":"number","higher_is_better":True},
  {"key":"defensive_penalties","label":"Defensive Penalties","category":"Discipline","format":"number","higher_is_better":False},
  {"key":"defensive_penalty_yards","label":"Defensive Penalty Yards","category":"Discipline","format":"number","higher_is_better":False},
- {"key":"defensive_snaps","label":"Defensive Snaps","category":"Snap Counts","format":"number","higher_is_better":True},
- {"key":"targets_allowed","label":"Targets Allowed","category":"Coverage Volume","format":"number","higher_is_better":False},
+ {"key":"targets_allowed","label":"Targets Allowed","category":"Coverage Volume","format":"number","higher_is_better":None},
  {"key":"completions_allowed","label":"Completions Allowed","category":"Coverage Volume","format":"number","higher_is_better":False},
  {"key":"completion_rate_allowed","label":"Completion Rate Allowed","category":"Coverage Efficiency","format":"percent","higher_is_better":False},
  {"key":"yards_allowed","label":"Receiving Yards Allowed","category":"Coverage Volume","format":"number","higher_is_better":False},
@@ -59,7 +57,7 @@ def num(v):
   return float(v)
  except (TypeError,ValueError): return None
 
-def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
+def build(pbp, player_rows, coverage_rows=()):
  roster={}
  for p in player_rows:
   pid=p.get("gsis_id") or p.get("player_id")
@@ -98,15 +96,6 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
 
  # PFR advanced defense data is keyed by PFR ID, so join through nflverse's
  # player registry rather than fuzzy-matching names.
- snaps_by_id=defaultdict(float)
- for row in snap_rows:
-  if str(row.get("season",""))!=str(SEASON) or str(row.get("game_type","REG")).upper() not in ("REG", "REGULAR"):
-   continue
-  pfr_id=row.get("pfr_player_id") or row.get("player_pfr_id")
-  pid=pfr_to_gsis.get(pfr_id)
-  snaps=num(row.get("defense_snaps"))
-  if pid and snaps is not None: snaps_by_id[pid]+=snaps
-
  coverage_by_id=defaultdict(list)
  for row in coverage_rows:
   if str(row.get("season",""))!=str(SEASON): continue
@@ -137,7 +126,7 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
   targets=cv("tgt"); completions=cv("cmp"); yards=cv("yds")
   team=teams[pid].most_common(1)[0][0] if teams[pid] else (chosen[0].get("tm") if chosen else p.get("team") or "")
   name=p.get("display_name") or p.get("full_name") or p.get("name") or pid
-  row={"player_id":pid,"player_name":name,"team":team,"defensive_snaps":snaps_by_id.get(pid,0)}
+  row={"player_id":pid,"player_name":name,"team":team}
   for key in ("interceptions","passes_defended","forced_fumbles","solo_tackles","assisted_tackles","tackles_for_loss","qb_hits","defensive_penalties","defensive_penalty_yards"):
    row[key]=int(s[key])
   row["sacks"]=s["sacks"]
@@ -177,19 +166,18 @@ def main():
  pbp=parse(download(PBP_URL))
  players=parse(download(PLAYERS_URL))
  coverage=parse(download(COVERAGE_URL))
- snaps=parse(download(SNAPS_URL))
- data=build(pbp,players,coverage,snaps)
+ data=build(pbp,players,coverage)
  if not data: raise RuntimeError("No CB defensive-event data produced; refusing to overwrite snapshot.")
  payload={"season":SEASON,"source":"nflverse PFR advanced defense + play-by-play + players registry",
-  "source_url":COVERAGE_URL,"snap_counts_url":SNAPS_URL,"updated_at":datetime.now(timezone.utc).isoformat(),
+  "source_url":COVERAGE_URL,"updated_at":datetime.now(timezone.utc).isoformat(),
   "player_count":len(data),"players":data,"metrics":METRICS,
   "limitations":[
    "Coverage allowed statistics are PFR charted defender-in-coverage values; they are not the NFL Next Gen Stats nearest-defender or coverage-responsibility model.",
-   "Defensive snap counts are summed from the nflverse/PFR snap-count feed; coverage snaps and yards per coverage snap are not provided and are not estimated.",
+   "Coverage snaps and yards per coverage snap are not included in this season-level PFR defense feed and are intentionally not estimated.",
    "Missed tackle rate and pass-rush pressure counts are PFR advanced charting fields; rates are only shown where the source provides them."
   ]}
  os.makedirs(os.path.dirname(OUT) or ".",exist_ok=True)
  with open(OUT,"w",encoding="utf-8") as f: json.dump(payload,f,ensure_ascii=False,indent=2)
- print(f"CB refresh OK: {len(pbp):,} plays + {len(coverage):,} PFR defense rows + {len(snaps):,} snap rows, {len(data)} cornerbacks saved to {OUT}")
+ print(f"CB refresh OK: {len(pbp):,} plays + {len(coverage):,} PFR defense rows, {len(data)} cornerbacks saved to {OUT}")
 
 if __name__=="__main__": main()
