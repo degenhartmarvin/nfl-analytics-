@@ -149,9 +149,14 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
     v=next((num(r.get(k)) for k in keys if num(r.get(k)) is not None),None)
     if v is not None: vals.append(v)
    return sum(vals) if vals else None
-  def weighted_avg(key,weight_key="def_targets"):
-   vals=[(num(r.get(key)),num(r.get(weight_key)) or 0) for r in chosen]
-   vals=[(v,w) for v,w in vals if v is not None and w>0]
+  def weighted_avg(key,weight_key="def_targets",fallback_key=None,fallback_weight="g"):
+   vals=[]
+   for r in chosen:
+    value=num(r.get(key))
+    if value is None and fallback_key: value=num(r.get(fallback_key))
+    weight=num(r.get(weight_key))
+    if weight is None or weight<=0: weight=num(r.get(fallback_weight)) or 0
+    if value is not None and weight>0: vals.append((value,weight))
    return (sum(v*w for v,w in vals)/sum(w for _,w in vals)) if vals else None
   targets=cv("def_targets","tgt"); completions=cv("def_completions_allowed","cmp"); yards=cv("def_yards_allowed","yds")
   team=(max(chosen,key=lambda r:int(num(r.get("week")) or 0)).get("team") if chosen else "") or (teams[pid].most_common(1)[0][0] if teams[pid] else p.get("team") or "")
@@ -172,8 +177,8 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
    "yards_per_target_allowed":(yards/targets if targets else None),
    "yards_per_completion_allowed":(yards/completions if completions else None),
    "touchdowns_allowed":cv("def_receiving_td_allowed","td"),
-   "passer_rating_allowed":weighted_avg("def_passer_rating_allowed"),
-   "average_depth_of_target":weighted_avg("def_adot"),
+   "passer_rating_allowed":weighted_avg("def_passer_rating_allowed","def_targets","rat"),
+   "average_depth_of_target":weighted_avg("def_adot","def_targets","dadot"),
    "air_yards_allowed":cv("def_air_yards_completed","air"),
    "yards_after_catch_allowed":cv("def_yards_after_catch","yac"),
    "blitzes":cv("def_times_blitzed","bltz"),
@@ -181,7 +186,7 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
    "qb_knockdowns":cv("def_times_hitqb","qbkd"),
    "pressures":cv("def_pressures","prss"),
    "missed_tackles":cv("def_missed_tackles","m_tkl"),
-   "missed_tackle_rate":weighted_avg("def_missed_tackle_pct", "def_tackles_combined"),
+   "missed_tackle_rate":weighted_avg("def_missed_tackle_pct", "def_tackles_combined", "m_tkl_percent", "comb"),
    "combined_tackles":cv("def_tackles_combined","comb")
   })
   output.append(row)
