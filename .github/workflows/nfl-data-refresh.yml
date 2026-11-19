@@ -10,7 +10,8 @@ on:
       - "refresh_qb_data.py"
       - "refresh_rb_data.py"
       - "refresh_oline_data.py"
-      - "refresh_cb_data.py"\n      - "refresh_edge_data.py"
+      - "refresh_cb_data.py"
+      - "refresh_edge_data.py"
       - "tests/**"
   schedule:
     - cron: "15 10 * * *"
@@ -44,7 +45,8 @@ jobs:
           python refresh_qb_data.py
           python refresh_rb_data.py
           python refresh_oline_data.py
-          python refresh_cb_data.py\n          python refresh_edge_data.py
+          python refresh_cb_data.py
+          python refresh_edge_data.py
       - name: Commit refreshed JSON snapshot if changed
         run: |
           git config user.name "github-actions[bot]"
