@@ -10,15 +10,15 @@ class EdgePipelineTests(unittest.TestCase):
         ]
         pbp = [
             {"season":"2026","game_type":"REG","game_id":"G1","play_id":"1","defteam":"CIN",
-             "sack_player_id":"DE1","tackle_for_loss_1_player_id":"DE1","qb_hit_1_player_id":"OLB1"},
+             "sack_player_id":"DE1","tackle_for_loss_1_player_id":"DE1","qb_hit_1_player_id":"OLB1","forced_fumble_player_1_player_id":"DE1"},
             {"season":"2026","game_type":"REG","game_id":"G1","play_id":"2","defteam":"CIN",
              "half_sack_1_player_id":"OLB1","half_sack_2_player_id":"DE1"},
             {"season":"2026","game_type":"REG","game_id":"G1","play_id":"3","defteam":"CIN",
              "tackle_for_loss_1_player_id":"DT1"},
         ]
         defense = [
-            {"season":"2026","game_type":"REG","pfr_player_id":"PFR1","team":"CIN","def_pressures":"5"},
-            {"season":"2026","game_type":"REG","pfr_player_id":"PFR2","team":"CIN","def_pressures":"3"},
+            {"season":"2026","game_type":"REG","pfr_player_id":"PFR1","team":"CIN","def_pressures":"5","def_times_hurried":"3","def_times_hitqb":"1","def_times_blitzed":"4","def_tackles_combined":"10","def_missed_tackles":"2"},
+            {"season":"2026","game_type":"REG","pfr_player_id":"PFR2","team":"CIN","def_pressures":"3","def_times_hurried":"2","def_times_hitqb":"1","def_times_blitzed":"2","def_tackles_combined":"8","def_missed_tackles":"1"},
         ]
         snaps = [
             {"season":"2026","game_type":"REG","game_id":"G1","team":"CIN","pfr_player_id":"PFR1","defense_snaps":"50","defense_pct":"0.5"},
@@ -33,6 +33,16 @@ class EdgePipelineTests(unittest.TestCase):
         self.assertEqual(de["negative_plays_forced"],2)
         self.assertAlmostEqual(de["negative_plays_forced_rate"],2/50)
         self.assertEqual(de["pressures"],5)
+        self.assertEqual(de["hurries"],3)
+        self.assertEqual(de["knockdowns"],1)
+        self.assertEqual(de["blitzes"],4)
+        self.assertEqual(de["combined_tackles"],10)
+        self.assertEqual(de["missed_tackles"],2)
+        self.assertAlmostEqual(de["missed_tackle_rate"],2/12)
+        self.assertEqual(de["forced_fumbles"],1)
+        self.assertEqual(de["defensive_snaps"],50)
+        self.assertAlmostEqual(de["defensive_snap_share"],0.5)
+        self.assertAlmostEqual(de["sacks_per_game"],1.5)
         self.assertEqual(olb["sacks"],0.5)
         self.assertEqual(olb["qb_hits"],1)
         self.assertIsNone(olb["pass_rush_win_rate"])
