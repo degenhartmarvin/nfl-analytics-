@@ -40,6 +40,17 @@ class QuarterbackPipelineTests(unittest.TestCase):
         self.assertAlmostEqual(qb["qbr_total"],72.4)
         self.assertAlmostEqual(qb["time_to_throw"],2.81)
 
+    def test_backup_below_half_team_attempts_is_excluded(self):
+        players=self.players+[
+            {"gsis_id":"QB2","position":"QB","display_name":"Backup QB"}
+        ]
+        pbp=self.pbp+[
+            {"passer_player_id":"QB2","posteam":"AAA","play_type":"pass","pass_attempt":"1","complete_pass":"1","yards_gained":"5","air_yards":"4","qb_dropback":"1"}
+        ]
+        rows=build(pbp,players)
+        self.assertTrue(any(x["player_id"]=="QB1" for x in rows))
+        self.assertFalse(any(x["player_id"]=="QB2" for x in rows))
+
     def test_non_qb_is_not_included(self):
         rows=build(self.pbp,self.players)
         self.assertFalse(any(x["player_id"]=="WR1" for x in rows))
