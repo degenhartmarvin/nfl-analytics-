@@ -82,6 +82,18 @@ const wrMetricList=[
 {key:'yac_per_reception',label:'YAC per Reception',cat:'Big Plays',format:'decimal',high:true,minReceptions:20},
 {key:'drops',label:'Drops',cat:'Ball Security',format:'number',high:false,minTargets:25},
 {key:'drop_rate',label:'Drop Rate',cat:'Ball Security',format:'pct',high:false,minTargets:25}];
+const cbMetricList=[
+{key:'interceptions',label:'Interceptions',cat:'Ball Skills',format:'number',high:true},
+{key:'passes_defended',label:'Passes Defended / PBUs',cat:'Ball Skills',format:'number',high:true},
+{key:'forced_fumbles',label:'Forced Fumbles',cat:'Ball Skills',format:'number',high:true},
+{key:'solo_tackles',label:'Solo Tackles',cat:'Tackling & Run Support',format:'number',high:true},
+{key:'assisted_tackles',label:'Assisted Tackles',cat:'Tackling & Run Support',format:'number',high:true},
+{key:'tackles_for_loss',label:'Tackles for Loss',cat:'Tackling & Run Support',format:'number',high:true},
+{key:'sacks',label:'Sacks',cat:'Pass Rush',format:'decimal',high:true},
+{key:'qb_hits',label:'QB Hits',cat:'Pass Rush',format:'number',high:true},
+{key:'defensive_penalties',label:'Defensive Penalties',cat:'Discipline',format:'number',high:false},
+{key:'defensive_penalty_yards',label:'Defensive Penalty Yards',cat:'Discipline',format:'number',high:false}
+];
 const rbMetricList=[
 {key:'carries',label:'Carries',cat:'Rushing Production',format:'number',high:true},
 {key:'rushing_yards',label:'Rushing Yards',cat:'Rushing Production',format:'number',high:true},
@@ -168,21 +180,21 @@ const qbMetricList=[
 {key:'longest_rush',label:'Longest Rush',cat:'Rushing',format:'decimal',high:true}];
 let playerSnapshot=null,playerSnapshots={},selectedPlayerMetric='receiving_yards';
 function activePosition(){return el('playerPosition').value||'WR';}
-function activeMetricList(){return activePosition()==='QB'?qbMetricList:activePosition()==='RB'?rbMetricList:wrMetricList;}
+function activeMetricList(){return activePosition()==='QB'?qbMetricList:activePosition()==='RB'?rbMetricList:activePosition()==='CB'?cbMetricList:wrMetricList;}
 function playerFmt(v,f){if(v==null||!Number.isFinite(Number(v)))return'—';const n=Number(v);if(f==='pct')return(n*100).toFixed(1)+'%';if(f==='signed')return(n>=0?'+':'')+n.toFixed(2);if(f==='signed1')return(n>=0?'+':'')+n.toFixed(1)+' pp';if(f==='decimal')return n.toFixed(2);return Math.round(n).toLocaleString('de-DE');}
 function loadPlayerView(){
 el('overview').hidden=true;el('teamDetail').hidden=true;el('playerDetail').hidden=true;el('olineView').hidden=true;el('olineDetail').hidden=true;el('playerView').hidden=false;el('playersTab').classList.add('active');
 document.querySelectorAll('.tab[data-group]').forEach(b=>b.classList.remove('active'));
 const pos=activePosition(),list=activeMetricList();
-el('playerDetailBack').textContent='← Zurück zum '+(pos==='QB'?'QB':pos==='RB'?'RB':'WR')+'-Ranking';
-el('playerView').querySelector('.detail-meta').textContent='Positions-Rankings · '+(pos==='QB'?'Quarterback':pos==='RB'?'Running Back':'Wide Receiver');
+el('playerDetailBack').textContent='← Zurück zum '+(pos==='QB'?'QB':pos==='RB'?'RB':pos==='CB'?'CB':'WR')+'-Ranking';
+el('playerView').querySelector('.detail-meta').textContent='Positions-Rankings · '+(pos==='QB'?'Quarterback':pos==='RB'?'Running Back':pos==='CB'?'Cornerback':'Wide Receiver');
 el('playerMetric').innerHTML=list.map(m=>'<option value="'+m.key+'">'+m.label+'</option>').join('');
 if(!list.some(m=>m.key===selectedPlayerMetric))selectedPlayerMetric=list[0].key;
 el('playerMetric').value=selectedPlayerMetric;
 playerSnapshot=playerSnapshots[pos]||null;renderPlayerRanking();
 if(playerSnapshot)return;
 el('playerStatus').className='status';el('playerStatus').textContent='Lade '+pos+'-Spielerdaten…';
-const file=pos==='QB'?'qb_players_2026.json':pos==='RB'?'rb_players_2026.json':'wr_players_2026.json';
+const file=pos==='QB'?'qb_players_2026.json':pos==='RB'?'rb_players_2026.json':pos==='CB'?'cb_players_2026.json':'wr_players_2026.json';
 fetch('./data/'+file+'?nocache='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error(pos+'-Snapshot nicht veröffentlicht (HTTP '+r.status+')');return r.json()}).then(p=>{
 if(!Array.isArray(p.players))throw Error('Spielerdatenformat ungültig');playerSnapshots[pos]=p;playerSnapshot=p;renderPlayerRanking();
 }).catch(e=>{el('playerStatus').className='status err';el('playerStatus').textContent='Spieler-Daten noch nicht verfügbar: '+e.message;});
@@ -192,15 +204,15 @@ if(!playerSnapshot)return;
 const list=activeMetricList(),metric=list.find(m=>m.key===el('playerMetric').value)||list[0];
 let rows=[...playerSnapshot.players].filter(p=>p[metric.key]!=null&&(!metric.minTargets||Number(p.targets)>=metric.minTargets)&&(!metric.minReceptions||Number(p.receptions)>=metric.minReceptions)&&(!metric.minAttempts||Number(p.attempts)>=metric.minAttempts)&&(!metric.minCarries||Number(p.carries)>=metric.minCarries));
 rows.sort((a,b)=>metric.high?Number(b[metric.key])-Number(a[metric.key]):Number(a[metric.key])-Number(b[metric.key]));
-el('playerList').innerHTML=rows.map((p,i)=>'<div class="player-row" role="button" tabindex="0" data-player="'+p.player_id+'"><div class="player-rank">#'+(i+1)+'</div><div><div class="player-name">'+p.player_name+'</div><div class="player-team">'+(p.team||'—')+' · '+(activePosition()==='QB'?'Quarterback':activePosition()==='RB'?'Running Back':'Wide Receiver')+'</div></div><div class="player-value">'+playerFmt(p[metric.key],metric.format)+'</div></div>').join('')||'<div class="notice">Für diese Statistik sind aktuell keine Daten verfügbar.</div>';
+el('playerList').innerHTML=rows.map((p,i)=>'<div class="player-row" role="button" tabindex="0" data-player="'+p.player_id+'"><div class="player-rank">#'+(i+1)+'</div><div><div class="player-name">'+p.player_name+'</div><div class="player-team">'+(p.team||'—')+' · '+(activePosition()==='QB'?'Quarterback':activePosition()==='RB'?'Running Back':activePosition()==='CB'?'Cornerback':'Wide Receiver')+'</div></div><div class="player-value">'+playerFmt(p[metric.key],metric.format)+'</div></div>').join('')||'<div class="notice">Für diese Statistik sind aktuell keine Daten verfügbar.</div>';
 el('playerList').querySelectorAll('[data-player]').forEach(node=>{node.addEventListener('click',()=>showPlayerDetail(node.dataset.player));node.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();showPlayerDetail(node.dataset.player);}});});
-el('playerStatus').className='status ok';el('playerStatus').textContent=playerSnapshot.season+' Saison · '+rows.length+' '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':'WR')+' im Ranking'+(metric.minAttempts?' · Mindestwert: '+metric.minAttempts+' Passversuche':metric.minTargets?' · Mindestwert: '+metric.minTargets+' Targets':metric.minReceptions?' · Mindestwert: '+metric.minReceptions+' Receptions':metric.minCarries?' · Mindestwert: '+metric.minCarries+' Carries':'')+' · '+playerSnapshot.source+' · aktualisiert '+new Date(playerSnapshot.updated_at).toLocaleString('de-DE');
+el('playerStatus').className='status ok';el('playerStatus').textContent=playerSnapshot.season+' Saison · '+rows.length+' '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':activePosition()==='CB'?'CB':'WR')+' im Ranking'+(metric.minAttempts?' · Mindestwert: '+metric.minAttempts+' Passversuche':metric.minTargets?' · Mindestwert: '+metric.minTargets+' Targets':metric.minReceptions?' · Mindestwert: '+metric.minReceptions+' Receptions':metric.minCarries?' · Mindestwert: '+metric.minCarries+' Carries':'')+' · '+playerSnapshot.source+' · aktualisiert '+new Date(playerSnapshot.updated_at).toLocaleString('de-DE');
 }
 function showPlayerDetail(playerId){
 const p=playerSnapshot?.players.find(x=>x.player_id===playerId);if(!p)return;
 el('playerView').hidden=true;el('playerDetail').hidden=false;
 el('playerDetailTitle').textContent=p.player_name;
-el('playerDetailMeta').textContent=(p.team||'Team unbekannt')+' · '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':'WR')+' · '+playerSnapshot.season+' Saison';
+el('playerDetailMeta').textContent=(p.team||'Team unbekannt')+' · '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':activePosition()==='CB'?'CB':'WR')+' · '+playerSnapshot.season+' Saison';
 const list=activeMetricList(),cats=[...new Set(list.map(m=>m.cat))];
 el('playerDetailGroups').innerHTML=cats.map(cat=>'<details class="player-category"><summary>'+cat+'</summary>'+list.filter(m=>m.cat===cat).map(m=>'<div class="player-stat"><span>'+m.label+'</span><strong>'+playerFmt(p[m.key],m.format)+' <span class="stat-rank">'+(p[m.key+'_rank']?'#'+p[m.key+'_rank']:'—')+'</span></strong></div>').join('')+'</details>').join('');
 window.scrollTo({top:0,behavior:'smooth'});
@@ -218,7 +230,7 @@ el('tbody').addEventListener('click',event=>{const row=event.target.closest('tr[
 el('tbody').addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){const row=event.target.closest('tr[data-team]');if(row){event.preventDefault();showTeam(row.dataset.team);}}});
 document.querySelectorAll('.tab[data-group]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');side=b.dataset.group;el('playerView').hidden=true;el('playerDetail').hidden=true;el('teamDetail').hidden=true;el('olineView').hidden=true;el('olineDetail').hidden=true;el('overview').hidden=false;el('playersTab').classList.remove('active');fillMetrics();render();}));el('metric').addEventListener('change',render);el('search').addEventListener('input',render);el('sort').addEventListener('change',render);fillMetrics();
 let olineSnapshot=null,olineMetricKey='sack_rate';
-function fmtOline(v,unit){if(v==null||!Number.isFinite(Number(v)))return'—';const n=Number(v);if(unit==='% Dropbacks'||unit==='% Runs'||unit==='% Attempts')return(n*100).toFixed(1)+'%';if(unit==='EPA/Run')return(n>=0?'+':'')+n.toFixed(2);if(unit==='Yards/Carry'||unit==='Yards/Dropback')return n.toFixed(2);return Math.round(n).toLocaleString('de-DE');}
+function fmtOline(v,unit){if(v==null||!Number.isFinite(Number(v)))return'—';const n=Number(v);if(unit==='% Dropbacks'||unit==='% Runs'||unit==='% Attempts'||unit==='% Offensive Plays')return(n*100).toFixed(1)+'%';if(unit==='EPA/Run')return(n>=0?'+':'')+n.toFixed(2);if(unit==='Yards/Carry'||unit==='Yards/Dropback')return n.toFixed(2);return Math.round(n).toLocaleString('de-DE');}
 function showOlineView(){
  el('overview').hidden=true;el('playerView').hidden=true;el('playerDetail').hidden=true;el('teamDetail').hidden=true;el('olineDetail').hidden=true;el('olineView').hidden=false;
  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));el('olineTab').classList.add('active');
@@ -244,7 +256,7 @@ function showOlineDetail(team){
  el('olineDetailTitle').textContent=names[team]+' ('+team+') · Offensive Line';
  el('olineDetailMeta').textContent='2026 · '+row.games+' Spiele · '+row.dropbacks+' Dropbacks · '+row.carries_faced+' Laufversuche';
  const groups={};olineSnapshot.metrics.forEach(m=>(groups[m.category]??=[]).push(m));
- const order=['Pass Protection','Run Blocking','Run Game Outcomes','Short Yardage & Power','Discipline','Volume'];
+ const order=['Pass Protection','Run Blocking','Negative Plays','Run Game Outcomes','Short Yardage & Power','Discipline','Volume'];
  el('olineDetailGroups').innerHTML=order.filter(cat=>groups[cat]).map(cat=>'<details class="stat-group"><summary>'+cat+'<span class="stat-count">'+groups[cat].length+' Stats</span></summary>'+groups[cat].map(m=>'<div class="stat-row"><div class="stat-label">'+m.name+'</div><div class="stat-value">'+fmtOline(row[m.id],m.unit)+' <span class="stat-rank">'+(row[m.id+'_rank']==null?'—':'#'+row[m.id+'_rank'])+'</span></div></div>').join('')+'</details>').join('');
  window.scrollTo({top:0,behavior:'smooth'});
 }
