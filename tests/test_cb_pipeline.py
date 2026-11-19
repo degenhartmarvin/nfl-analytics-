@@ -18,12 +18,12 @@ class CornerbackPipelineTests(unittest.TestCase):
            "half_sack_1_player_id":"CB2","half_sack_2_player_id":"CB2","penalty":"0"},
           {"defteam":"CIN","solo_tackle_1_player_id":"LB1","penalty":"0"}
         ]
-        coverage=[{"season":"2026","pfr_id":"PFR1","pos":"RCB","tm":"CIN","tgt":"20","cmp":"10","yds":"100","td":"1","rat":"60.5","dadot":"8.0","air":"120","yac":"30","bltz":"5","hrry":"2","qbkd":"1","sk":"1","prss":"4","comb":"15","m_tkl":"3","m_tkl_percent":"0.15"}]
-        data=build(pbp,players,coverage)
+        snaps=[{"season":"2026","game_type":"REG","pfr_player_id":"PFR1","defense_snaps":"120"},{"season":"2026","game_type":"REG","pfr_player_id":"PFR2","defense_snaps":"80"}]\n        coverage=[{"season":"2026","pfr_id":"PFR1","pos":"RCB","tm":"CIN","tgt":"20","cmp":"10","yds":"100","td":"1","rat":"60.5","dadot":"8.0","air":"120","yac":"30","bltz":"5","hrry":"2","qbkd":"1","sk":"1","prss":"4","comb":"15","m_tkl":"3","m_tkl_percent":"0.15"}]
+        data=build(pbp,players,coverage,snaps)
         self.assertEqual(len(data),2)
         one=next(p for p in data if p["player_id"]=="CB1")
         two=next(p for p in data if p["player_id"]=="CB2")
-        self.assertEqual(one["targets_allowed"],20)
+        self.assertEqual(one["defensive_snaps"],120)\n        self.assertEqual(two["defensive_snaps"],80)\n        self.assertEqual(one["targets_allowed"],20)
         self.assertEqual(one["completions_allowed"],10)
         self.assertAlmostEqual(one["completion_rate_allowed"],0.5)
         self.assertAlmostEqual(one["yards_per_target_allowed"],5.0)
@@ -41,7 +41,7 @@ class CornerbackPipelineTests(unittest.TestCase):
         self.assertEqual(one["defensive_penalties"],1)
         self.assertEqual(one["defensive_penalty_yards"],10)
         self.assertEqual(two["sacks"],1)
-        self.assertEqual(one["interceptions_rank"],1)
+        self.assertEqual(one["interceptions_rank"],1)\n        self.assertFalse(next(m for m in __import__("refresh_cb_data").METRICS if m["key"]=="targets_allowed")["higher_is_better"])
         self.assertEqual(two["interceptions_rank"],2)
 
 if __name__=="__main__":
