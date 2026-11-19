@@ -119,6 +119,10 @@ def build(pbp, player_rows, coverage_rows=()):
   aggregate=[r for r in crows if r.get("tm")=="2TM"]
   chosen=aggregate[:1] if aggregate else crows
   def cv(key): return summed(chosen,key)
+  def weighted_avg(key):
+   vals=[(num(r.get(key)),num(r.get("g")) or 1) for r in chosen]
+   vals=[(v,w) for v,w in vals if v is not None]
+   return (sum(v*w for v,w in vals)/sum(w for _,w in vals)) if vals else None
   targets=cv("tgt"); completions=cv("cmp"); yards=cv("yds")
   team=teams[pid].most_common(1)[0][0] if teams[pid] else (chosen[0].get("tm") if chosen else p.get("team") or "")
   name=p.get("display_name") or p.get("full_name") or p.get("name") or pid
@@ -128,14 +132,15 @@ def build(pbp, player_rows, coverage_rows=()):
   row["sacks"]=s["sacks"]
   row.update({
    "targets_allowed":targets,
+   "targets":targets,
    "completions_allowed":completions,
    "completion_rate_allowed":(completions/targets if targets else None),
    "yards_allowed":yards,
    "yards_per_target_allowed":(yards/targets if targets else None),
    "yards_per_completion_allowed":(yards/completions if completions else None),
    "touchdowns_allowed":cv("td"),
-   "passer_rating_allowed":cv("rat"),
-   "average_depth_of_target":cv("dadot"),
+   "passer_rating_allowed":weighted_avg("rat"),
+   "average_depth_of_target":weighted_avg("dadot"),
    "air_yards_allowed":cv("air"),
    "yards_after_catch_allowed":cv("yac"),
    "blitzes":cv("bltz"),
@@ -143,7 +148,7 @@ def build(pbp, player_rows, coverage_rows=()):
    "qb_knockdowns":cv("qbkd"),
    "pressures":cv("prss"),
    "missed_tackles":cv("m_tkl"),
-   "missed_tackle_rate":cv("m_tkl_percent"),
+   "missed_tackle_rate":weighted_avg("m_tkl_percent"),
    "combined_tackles":cv("comb")
   })
   output.append(row)
