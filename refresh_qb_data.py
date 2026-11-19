@@ -89,7 +89,7 @@ def build(pbp, player_rows):
             s["rush_yards"]+=ry
             s["rush_tds"]+=int(truth(row.get("rush_touchdown")) or truth(row.get("touchdown")))
             s["rush_first_downs"]+=int(truth(row.get("first_down")))
-            s["longest_rush"]=max(s["longest_rush"],ry)
+            s["longest_rush"]=ry if s["rush_attempts"]==1 else max(s["longest_rush"],ry)
             if ry>=10: s["explosive_rushes"]+=1
             if truth(row.get("fumble_lost")) and row.get("fumbler_player_id")==rid: s["fumbles_lost"]+=1
 
