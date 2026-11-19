@@ -252,7 +252,7 @@ function showPlayerDetail(playerId){
 const p=playerSnapshot?.players.find(x=>x.player_id===playerId);if(!p)return;
 el('playerView').hidden=true;el('playerDetail').hidden=false;
 el('playerDetailTitle').textContent=p.player_name;
-el('playerDetailMeta').textContent=(p.team||'Team unbekannt')+' · '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':activePosition()==='CB'?'CB':'WR')+' · '+playerSnapshot.season+' Saison';
+el('playerDetailMeta').textContent=(p.team||'Team unbekannt')+' · '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':activePosition()==='CB'?'CB':activePosition()==='EDGE'?'Edge Rusher (DE + OLB)':'WR')+' · '+playerSnapshot.season+' Saison';
 const list=activeMetricList(),cats=[...new Set(list.map(m=>m.cat))];
 el('playerDetailGroups').innerHTML=cats.map(cat=>'<details class="player-category"><summary>'+cat+'</summary>'+list.filter(m=>m.cat===cat).map(m=>'<div class="player-stat"><span>'+m.label+(m.note?'<div class="small">'+m.note+'</div>':'')+'</span><strong>'+playerFmt(p[m.key],m.format)+' <span class="stat-rank">'+(p[m.key+'_rank']?'#'+p[m.key+'_rank']:'—')+'</span></strong></div>').join('')+'</details>').join('');
 window.scrollTo({top:0,behavior:'smooth'});
