@@ -99,7 +99,6 @@ const qbMetricList=[
 {key:'epa_per_dropback',label:'EPA per Dropback',cat:'Passing Efficiency',format:'signed',high:true,minAttempts:100},
 {key:'pass_epa_per_attempt',label:'EPA per Pass Attempt',cat:'Passing Efficiency',format:'signed',high:true,minAttempts:100},
 {key:'success_rate',label:'Success Rate',cat:'Passing Efficiency',format:'pct',high:true,minAttempts:100},
-{key:'passing_tds',label:'Passing Touchdowns',cat:'Scoring & Ball Security',format:'number',high:true},
 {key:'td_rate',label:'Touchdown Rate',cat:'Scoring & Ball Security',format:'pct',high:true,minAttempts:100},
 {key:'interceptions',label:'Interceptions',cat:'Scoring & Ball Security',format:'number',high:false},
 {key:'interception_rate',label:'Interception Rate',cat:'Scoring & Ball Security',format:'pct',high:false,minAttempts:100},
@@ -145,7 +144,8 @@ if(!playerSnapshot)return;
 const list=activeMetricList(),metric=list.find(m=>m.key===el('playerMetric').value)||list[0];
 let rows=[...playerSnapshot.players].filter(p=>p[metric.key]!=null&&(!metric.minTargets||Number(p.targets)>=metric.minTargets)&&(!metric.minReceptions||Number(p.receptions)>=metric.minReceptions)&&(!metric.minAttempts||Number(p.attempts)>=metric.minAttempts));
 rows.sort((a,b)=>metric.high?Number(b[metric.key])-Number(a[metric.key]):Number(a[metric.key])-Number(b[metric.key]));
-el('playerList').innerHTML=rows.map((p,i)=>'<div class="player-row" role="button" tabindex="0" onclick="showPlayerDetail(\\''+p.player_id+'\\')"><div class="player-rank">#'+(i+1)+'</div><div><div class="player-name">'+p.player_name+'</div><div class="player-team">'+(p.team||'—')+' · '+(activePosition()==='QB'?'Quarterback':'Wide Receiver')+'</div></div><div class="player-value">'+playerFmt(p[metric.key],metric.format)+'</div></div>').join('')||'<div class="notice">Für diese Statistik sind aktuell keine Daten verfügbar.</div>';
+el('playerList').innerHTML=rows.map((p,i)=>'<div class="player-row" role="button" tabindex="0" data-player="'+p.player_id+'"><div class="player-rank">#'+(i+1)+'</div><div><div class="player-name">'+p.player_name+'</div><div class="player-team">'+(p.team||'—')+' · '+(activePosition()==='QB'?'Quarterback':'Wide Receiver')+'</div></div><div class="player-value">'+playerFmt(p[metric.key],metric.format)+'</div></div>').join('')||'<div class="notice">Für diese Statistik sind aktuell keine Daten verfügbar.</div>';
+el('playerList').querySelectorAll('[data-player]').forEach(node=>{node.addEventListener('click',()=>showPlayerDetail(node.dataset.player));node.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();showPlayerDetail(node.dataset.player);}});});
 el('playerStatus').className='status ok';el('playerStatus').textContent=playerSnapshot.season+' Saison · '+rows.length+' '+(activePosition()==='QB'?'QB':'WR')+' im Ranking'+(metric.minAttempts?' · Mindestwert: '+metric.minAttempts+' Passversuche':metric.minTargets?' · Mindestwert: '+metric.minTargets+' Targets':metric.minReceptions?' · Mindestwert: '+metric.minReceptions+' Receptions':'')+' · '+playerSnapshot.source+' · aktualisiert '+new Date(playerSnapshot.updated_at).toLocaleString('de-DE');
 }
 function showPlayerDetail(playerId){
