@@ -31,13 +31,15 @@ def norm_name(value):
     return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in str(value or "")).split())
 
 def supplemental_maps(qbr_rows, ngs_rows, season):
-    qbr={}
+    qbr_values=defaultdict(list)
     for row in qbr_rows:
         if str(row.get("season","")) != str(season): continue
         if str(row.get("season_type","")).lower() not in ("regular","reg","regular season",""): continue
+        if str(row.get("qualified","1")).strip() in ("0","False","false"): continue
         name=norm_name(row.get("name_display") or row.get("name") or row.get("name_short"))
         value=num(row.get("qbr_total"))
-        if name and value is not None: qbr[name]=value
+        if name and value is not None: qbr_values[name].append(value)
+    qbr={name:sum(values)/len(values) for name,values in qbr_values.items()}
     ttt={}
     # nflverse NGS publishes week=0 as the season-to-date regular-season aggregate.
     for row in ngs_rows:
@@ -58,7 +60,10 @@ def build(pbp, player_rows, qbr_rows=None, ngs_rows=None):
             roster[pid]=p
     stats=defaultdict(lambda:defaultdict(float))
     teams=defaultdict(Counter)
+    team_attempts=Counter()
     for row in pbp:
+        if row.get("posteam") and truth(row.get("pass_attempt")):
+            team_attempts[row["posteam"]]+=1
         pid=row.get("passer_player_id")
         if pid and pid in roster and roster[pid].get("position")=="QB":
             s=stats[pid]
@@ -123,6 +128,12 @@ def build(pbp, player_rows, qbr_rows=None, ngs_rows=None):
         p=roster[pid]; att=s["attempts"]; comp=s["completions"]; yds=s["pass_yards"]
         td=s["pass_tds"]; ints=s["interceptions"]; sacks=s["sacks"]; db=s["dropbacks"]
         team=teams[pid].most_common(1)[0][0] if teams[pid] else ""
+        # Keep only the clear primary passer for each team; short-term backups
+        # and one-game replacements are excluded from the QB leaderboard.
+        team_att=team_attempts.get(team,0)
+        if not team_att or att/team_att <= 0.50:
+            continue
+        qbr_map,ttt_map=supplemental_maps(qbr_rows or [],ngs_rows or [],SEASON)
         name=p.get("display_name") or p.get("full_name") or p.get("name") or pid
         c_pct=comp/att if att else None
         ypa=yds/att if att else None
@@ -183,7 +194,8 @@ def build(pbp, player_rows, qbr_rows=None, ngs_rows=None):
         "yards_per_rush":True,"rushing_first_downs":True,"explosive_rushes":True,
         "longest_rush":True,"fumbles_lost":False
     }
-    # Minimum 100 pass attempts for rate/efficiency rankings; cumulative totals remain rankable.
+    # All displayed players are primary team passers. Rate/efficiency rankings
+    # also require at least 100 attempts to avoid tiny-sample outliers.
     min_att={"completion_rate","yards_per_attempt","yards_per_completion","td_rate",
         "interception_rate","passer_rating","adjusted_yards_per_attempt","net_yards_per_attempt",
         "any_a","sack_rate","epa_per_dropback","pass_epa_per_attempt","success_rate","cpoe",
