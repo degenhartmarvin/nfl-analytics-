@@ -19,9 +19,21 @@ METRICS = [
  {"key":"sacks","label":"Sacks","category":"Pass-Rush-Produktion","format":"decimal","higher_is_better":True},
  {"key":"sack_rate","label":"Sack Rate","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"Nicht verfügbar: pass-rush snaps fehlen in den verwendeten öffentlichen Rohdaten."},
  {"key":"pressures","label":"Pressures","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
+ {"key":"hurries","label":"QB Hurries","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
+ {"key":"knockdowns","label":"QB Knockdowns","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
+ {"key":"blitzes","label":"Blitzes","category":"Pass-Rush-Einsatz","format":"number","higher_is_better":True},
  {"key":"pressure_rate","label":"Pressure Rate","category":"Pressure & Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"Nicht verfügbar: pass-rush snaps fehlen; wird nicht durch defensive snaps ersetzt."},
  {"key":"qb_hits","label":"QB Hits","category":"Pass-Rush-Produktion","format":"number","higher_is_better":True},
  {"key":"tfls","label":"Tackles for Loss (TFLs)","category":"Disruptive Plays","format":"number","higher_is_better":True},
+ {"key":"forced_fumbles","label":"Forced Fumbles","category":"Disruptive Plays","format":"number","higher_is_better":True},
+ {"key":"combined_tackles","label":"Combined Tackles","category":"Run Defense & Tackling","format":"number","higher_is_better":True},
+ {"key":"missed_tackles","label":"Missed Tackles","category":"Run Defense & Tackling","format":"number","higher_is_better":False},
+ {"key":"missed_tackle_rate","label":"Missed Tackle Rate (Missed / Tackle Attempts)","category":"Run Defense & Tackling","format":"percent","higher_is_better":False},
+ {"key":"defensive_snaps","label":"Defensive Snaps","category":"Usage & Belastung","format":"number","higher_is_better":True},
+ {"key":"defensive_snap_share","label":"Defensive Snap Share","category":"Usage & Belastung","format":"percent","higher_is_better":True},
+ {"key":"sacks_per_game","label":"Sacks per Game","category":"Produktion pro Spiel","format":"decimal","higher_is_better":True},
+ {"key":"pressures_per_game","label":"Pressures per Game","category":"Produktion pro Spiel","format":"decimal","higher_is_better":True},
+ {"key":"tfls_per_game","label":"TFLs per Game","category":"Produktion pro Spiel","format":"decimal","higher_is_better":True},
  {"key":"quick_pressure_rate","label":"Quick Pressure Rate (unter 2,5 Sek.)","category":"Pressure & Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"Nicht verfügbar: die NFL Next Gen Stats Quick-Pressure-Ereignisse liegen nicht im genutzten PFR-Wochendatensatz."},
  {"key":"negative_plays_forced_rate","label":"Negative Plays Forced Rate (Sacks + TFLs je Defensive Snap)","category":"Disruptive Plays","format":"percent","higher_is_better":True},
  {"key":"double_team_rate","label":"Double-Team Rate","category":"Gegnerische Aufmerksamkeit","format":"percent","higher_is_better":True,"availability_note":"Nicht verfügbar: keine verlässlichen individuellen Double-Team-Snap-Zahlen im verwendeten öffentlichen Datensatz."},
@@ -110,6 +122,9 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=()):
             add(pid, "tfls", team=team)
             if pid and game_id and play_id:
                 negative_play_ids[pid].add((game_id, play_id))
+        for i in (1, 2):
+            forced_id = row.get(f"forced_fumble_player_{i}_player_id")
+            add(forced_id, "forced_fumbles", team=team)
         sack_id = row.get("sack_player_id")
         if sack_id:
             add(sack_id, "sacks", 1, team)
@@ -124,6 +139,7 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=()):
                         negative_play_ids[pid].add((game_id, play_id))
 
     pressures_by_id = defaultdict(float)
+    pfr_totals = defaultdict(lambda: defaultdict(float))
     for row in defense_rows:
         if str(row.get("season","")).strip() != str(SEASON) or str(row.get("game_type","REG")).upper() != "REG":
             continue
@@ -133,6 +149,10 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=()):
         pressure = num(row.get("def_pressures"))
         if pressure is not None:
             pressures_by_id[pid] += pressure
+        for source_key, target_key in (("def_times_hurried", "hurries"), ("def_times_hitqb", "knockdowns"), ("def_times_blitzed", "blitzes"), ("def_tackles_combined", "combined_tackles"), ("def_missed_tackles", "missed_tackles")):
+            value = num(row.get(source_key))
+            if value is not None:
+                pfr_totals[pid][target_key] += value
         team = row.get("team") or ""
         if team:
             teams[pid][team] = teams[pid].get(team, 0) + 1
@@ -149,14 +169,28 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=()):
         sacks = s["sacks"]
         tfls = s["tfls"]
         negative_plays = len(negative_play_ids[pid])
+        pfr = pfr_totals[pid]
+        combined_tackles = pfr.get("combined_tackles", 0)
+        missed_tackles = pfr.get("missed_tackles", 0)
+        tackle_attempts = combined_tackles + missed_tackles
+        pressures = pressures_by_id.get(pid)
         row = {
             "player_id": pid, "player_name": name, "team": team,
             "roster_position": str(player.get("position") or "").upper(),
             "defensive_snaps": snaps,
             "defensive_snap_share": snaps / snap_denominator if snap_denominator > 0 else None,
             "games_played": len(games[pid]),
-            "sacks": sacks, "pressures": pressures_by_id.get(pid) or None,
+            "sacks": sacks, "pressures": pressures or None,
+            "hurries": pfr.get("hurries") or None, "knockdowns": pfr.get("knockdowns") or None,
+            "blitzes": pfr.get("blitzes") or None,
             "qb_hits": int(s["qb_hits"]), "tfls": int(tfls),
+            "forced_fumbles": int(s["forced_fumbles"]),
+            "combined_tackles": combined_tackles or None,
+            "missed_tackles": missed_tackles if tackle_attempts > 0 else None,
+            "missed_tackle_rate": missed_tackles / tackle_attempts if tackle_attempts > 0 else None,
+            "sacks_per_game": sacks / len(games[pid]) if games[pid] else None,
+            "pressures_per_game": pressures / len(games[pid]) if pressures is not None and games[pid] else None,
+            "tfls_per_game": tfls / len(games[pid]) if games[pid] else None,
             "negative_plays_forced": negative_plays,
             "negative_plays_forced_rate": negative_plays / snaps if snaps > 0 else None,
             # Do not invent denominators or charting values that are absent from source data.
