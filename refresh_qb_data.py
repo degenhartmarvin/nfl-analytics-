@@ -199,9 +199,11 @@ def build(pbp, player_rows, qbr_rows=None, ngs_rows=None):
 
 def main():
     pbp=parse(download(PBP_URL)); players=parse(download(PLAYERS_URL))
-    data=build(pbp,players)
+    qbr_rows=parse(download(QBR_URL)); ngs_rows=parse(download(NGS_URL))
+    data=build(pbp,players,qbr_rows,ngs_rows)
     if not data: raise RuntimeError("No QB data produced; refusing to overwrite snapshot.")
-    payload={"season":SEASON,"source":"nflverse play-by-play + ESPN Total QBR + NFL Next Gen Stats + players registry",\n        "supplemental_sources":{"qbr":QBR_URL,"time_to_throw":NGS_URL},
+    payload={"season":SEASON,"source":"nflverse play-by-play + ESPN Total QBR + NFL Next Gen Stats + players registry",
+        "supplemental_sources":{"qbr":QBR_URL,"time_to_throw":NGS_URL},
         "source_url":PBP_URL,"updated_at":datetime.now(timezone.utc).isoformat(),
         "player_count":len(data),"players":data}
     os.makedirs(os.path.dirname(OUT) or ".",exist_ok=True)
