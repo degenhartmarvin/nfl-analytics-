@@ -244,7 +244,7 @@ function showOlineDetail(team){
  el('olineDetailTitle').textContent=names[team]+' ('+team+') · Offensive Line';
  el('olineDetailMeta').textContent='2026 · '+row.games+' Spiele · '+row.dropbacks+' Dropbacks · '+row.carries_faced+' Laufversuche';
  const groups={};olineSnapshot.metrics.forEach(m=>(groups[m.category]??=[]).push(m));
- const order=['Pass Protection','Run Game Outcomes','Short Yardage & Power','Discipline','Volume'];
+ const order=['Pass Protection','Run Blocking','Run Game Outcomes','Short Yardage & Power','Discipline','Volume'];
  el('olineDetailGroups').innerHTML=order.filter(cat=>groups[cat]).map(cat=>'<details class="stat-group"><summary>'+cat+'<span class="stat-count">'+groups[cat].length+' Stats</span></summary>'+groups[cat].map(m=>'<div class="stat-row"><div class="stat-label">'+m.name+'</div><div class="stat-value">'+fmtOline(row[m.id],m.unit)+' <span class="stat-rank">'+(row[m.id+'_rank']==null?'—':'#'+row[m.id+'_rank'])+'</span></div></div>').join('')+'</details>').join('');
  window.scrollTo({top:0,behavior:'smooth'});
 }
