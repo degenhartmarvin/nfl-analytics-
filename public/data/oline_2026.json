@@ -2,7 +2,7 @@
   "season": 2026,
   "source": "nflverse play-by-play; pressures = sacks + QB hits (proxy)",
   "source_url": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2026.csv.gz",
-  "updated_at": "2026-11-19T12:11:50.654000+00:00",
+  "updated_at": "2026-11-19T15:29:23.016412+00:00",
   "team_count": 32,
   "plays_loaded": 26246,
   "data": [
