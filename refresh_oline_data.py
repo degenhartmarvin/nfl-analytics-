@@ -30,7 +30,6 @@ METRICS=[
  {"id":"rush_first_down_rate","name":"Rushing First Down Rate","category":"Run Game Outcomes","unit":"% Runs","higher_is_better":True},
  {"id":"short_yardage_attempts","name":"3rd/4th & 2 or Less Run Attempts","category":"Short Yardage & Power","unit":"Attempts","higher_is_better":None},
  {"id":"short_yardage_conversion_rate","name":"Short-Yardage Conversion Rate","category":"Short Yardage & Power","unit":"% Attempts","higher_is_better":True},
- {"id":"goal_line_td_rate","name":"Goal-Line Rushing TD Rate","category":"Short Yardage & Power","unit":"% Attempts","higher_is_better":True},
  {"id":"holding_penalties","name":"Offensive Holding Penalties","category":"Discipline","unit":"Penalties","higher_is_better":False},
  {"id":"false_start_penalties","name":"False Start Penalties","category":"Discipline","unit":"Penalties","higher_is_better":False},
  {"id":"tfls_allowed","name":"Tackles for Loss Allowed","category":"Run Blocking","unit":"TFLs","higher_is_better":False},
@@ -51,7 +50,7 @@ def parse(raw):
  if raw[:2]==b"\x1f\x8b": raw=gzip.decompress(raw)
  return list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
 
-def calculate(rows):
+def calculate(rows, pfr_rush=None):
  if not rows: raise ValueError("Empty play-by-play dataset")
  required={"posteam","play_type","yards_gained","epa","success","pass_attempt","sack","rush_attempt"}
  missing=required-set(rows[0])
@@ -95,6 +94,12 @@ def calculate(rows):
     s["holding_penalties"]+=1;s["oline_penalty_yards"]+=abs(fnum(r.get("penalty_yards")) or 0)
    elif "false start" in ptype:
     s["false_start_penalties"]+=1;s["oline_penalty_yards"]+=abs(fnum(r.get("penalty_yards")) or 0)
+ ybc_by_team=defaultdict(float)
+ if pfr_rush:
+  for rr in pfr_rush:
+   tm=rr.get('tm') or rr.get('team')
+   ybc=fnum(rr.get('ybc'))
+   if tm in TEAMS and ybc is not None: ybc_by_team[tm]+=ybc
  out=[]
  for team in TEAMS:
   s=stats[team]; carries=s["carries_faced"]; dropbacks=s["dropbacks"]
@@ -105,7 +110,7 @@ def calculate(rows):
    "pressures_allowed":int(s["sacks_allowed"]+s["qb_hits_allowed"]),"pressure_rate":(s["sacks_allowed"]+s["qb_hits_allowed"])/dropbacks if dropbacks else None,
    "rush_yards":int(s["rush_yards"]),"yards_per_carry":s["rush_yards"]/carries if carries else None,
    "tfls_allowed":int(s["tfls_allowed"]),"tfl_rate":s["tfls_allowed"]/carries if carries else None,
-   "rush_yards_before_contact":None,"yards_before_contact_per_carry":None,
+   "rush_yards_before_contact":ybc_by_team.get(team) if pfr_rush else None,"yards_before_contact_per_carry":ybc_by_team.get(team)/carries if pfr_rush and carries else None,
    "run_success_rate":s["run_success_total"]/carries if carries else None,
    "stuff_rate":s["stuffed"]/carries if carries else None,
    "explosive_run_rate":s["explosive_runs"]/carries if carries else None,
@@ -113,7 +118,6 @@ def calculate(rows):
    "rush_first_down_rate":s["rush_first_downs"]/carries if carries else None,
    "short_yardage_attempts":int(s["short_yardage_attempts"]),
    "short_yardage_conversion_rate":s["short_yardage_conversions"]/s["short_yardage_attempts"] if s["short_yardage_attempts"] else None,
-   "goal_line_td_rate":s["goal_line_tds"]/s["goal_line_attempts"] if s["goal_line_attempts"] else None,
    "holding_penalties":int(s["holding_penalties"]),"false_start_penalties":int(s["false_start_penalties"])}
   out.append(row)
  for m in METRICS:
@@ -129,7 +133,16 @@ def calculate(rows):
 def main():
  req=urllib.request.Request(URL,headers={"User-Agent":"NFL-Analytics-Oline-refresh/1.0"})
  with urllib.request.urlopen(req,timeout=180) as response: rows=parse(response.read())
- data=calculate(rows)
+ pfr_url='https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_season_rush.csv'
+ try:
+  req2=urllib.request.Request(pfr_url,headers={'User-Agent':'NFL-Analytics'})
+  with urllib.request.urlopen(req2,timeout=120) as response:
+   pfr_rush=list(csv.DictReader(io.StringIO(response.read().decode('utf-8-sig'))))
+  pfr_rush=[x for x in pfr_rush if str(x.get('season'))==str(SEASON)]
+ except Exception as exc:
+  print('Warning: PFR rushing data unavailable; YBC omitted: '+str(exc))
+  pfr_rush=None
+ data=calculate(rows,pfr_rush)
  if len(data)!=32: raise RuntimeError(f"Expected 32 teams, got {len(data)}")
  payload={"season":SEASON,"source":"nflverse play-by-play; pressures = sacks + QB hits (proxy)",
   "source_url":URL,"updated_at":datetime.now(timezone.utc).isoformat(),"team_count":32,
