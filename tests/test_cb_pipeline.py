@@ -26,6 +26,15 @@ class CornerbackPipelineTests(unittest.TestCase):
         self.assertAlmostEqual(one["completion_rate_allowed"],0.5)
         self.assertAlmostEqual(one["yards_per_target_allowed"],6.0)
         self.assertAlmostEqual(one["passer_rating_allowed"],70.0)
+        self.assertEqual(one["games_played"],2)
+        self.assertAlmostEqual(one["targets_per_100_defensive_snaps"],30/175*100)
+        self.assertAlmostEqual(one["yards_allowed_per_100_defensive_snaps"],180/175*100)
+        self.assertAlmostEqual(one["touchdown_rate_allowed"],1/30)
+        self.assertAlmostEqual(one["interception_rate"],0)
+        self.assertAlmostEqual(one["pass_breakup_rate"],0)
+        self.assertAlmostEqual(one["forced_incompletion_rate"],0)
+        self.assertAlmostEqual(one["yac_per_reception_allowed"],50/15)
+        self.assertAlmostEqual(one["missed_tackles_per_game"],1.5)
 
     def test_defensive_events_and_rankings(self):
         players=[
