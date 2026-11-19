@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 SEASON=int(os.environ.get("NFL_SEASON","2026"))
 PBP_URL=f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{SEASON}.csv.gz"
 PLAYERS_URL="https://github.com/nflverse/nflverse-data/releases/download/players/players.csv"
-COVERAGE_URL="https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_season_def.csv"
+COVERAGE_URL=f"https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_week_def_{SEASON}.csv"
 SNAPS_URL=f"https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{SEASON}.csv"
 OUT=os.environ.get("NFL_CB_OUTPUT","public/data/cb_players_2026.json")
 
@@ -124,10 +124,10 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
  coverage_by_id=defaultdict(list)
  for row in coverage_rows:
   if str(row.get("season",""))!=str(SEASON): continue
-  pid=pfr_to_gsis.get(row.get("pfr_id"))
+  # Weekly PFR defensive rows use pfr_player_id and are already game-level.
+  pid=pfr_to_gsis.get(row.get("pfr_player_id") or row.get("pfr_id"))
   if not pid: continue
-  if str(row.get("pos","")).upper() not in ("CB","RCB","LCB","SCB","NCB"):
-   continue
+  if str(row.get("game_type","REG")).upper() != "REG": continue
   coverage_by_id[pid].append(row)
 
  def summed(rows,key):
@@ -140,16 +140,21 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
   s=stats[pid]
   crows=coverage_by_id.get(pid,[])
   if not any(s.values()) and not crows: continue
-  # Prefer an explicit 2TM season aggregate if present; otherwise sum team rows.
-  aggregate=[r for r in crows if r.get("tm")=="2TM"]
-  chosen=aggregate[:1] if aggregate else crows
-  def cv(key): return summed(chosen,key)
-  def weighted_avg(key):
-   vals=[(num(r.get(key)),num(r.get("g")) or 1) for r in chosen]
-   vals=[(v,w) for v,w in vals if v is not None]
+  # Rebuild every season total from distinct weekly game rows on each refresh.
+  # This is idempotent: reruns replace the snapshot instead of adding the same game twice.
+  chosen=crows
+  def cv(*keys):
+   vals=[]
+   for r in chosen:
+    v=next((num(r.get(k)) for k in keys if num(r.get(k)) is not None),None)
+    if v is not None: vals.append(v)
+   return sum(vals) if vals else None
+  def weighted_avg(key,weight_key="def_targets"):
+   vals=[(num(r.get(key)),num(r.get(weight_key)) or 0) for r in chosen]
+   vals=[(v,w) for v,w in vals if v is not None and w>0]
    return (sum(v*w for v,w in vals)/sum(w for _,w in vals)) if vals else None
-  targets=cv("tgt"); completions=cv("cmp"); yards=cv("yds")
-  team=teams[pid].most_common(1)[0][0] if teams[pid] else (chosen[0].get("tm") if chosen else p.get("team") or "")
+  targets=cv("def_targets","tgt"); completions=cv("def_completions_allowed","cmp"); yards=cv("def_yards_allowed","yds")
+  team=(max(chosen,key=lambda r:int(num(r.get("week")) or 0)).get("team") if chosen else "") or (teams[pid].most_common(1)[0][0] if teams[pid] else p.get("team") or "")
   name=p.get("display_name") or p.get("full_name") or p.get("name") or pid
   player_snaps=int(snap_totals.get(pid,0))
   team_snap_denominator=sum(team_season_totals[t] for t in player_teams.get(pid,set()))
@@ -166,18 +171,18 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
    "yards_allowed":yards,
    "yards_per_target_allowed":(yards/targets if targets else None),
    "yards_per_completion_allowed":(yards/completions if completions else None),
-   "touchdowns_allowed":cv("td"),
-   "passer_rating_allowed":weighted_avg("rat"),
-   "average_depth_of_target":weighted_avg("dadot"),
-   "air_yards_allowed":cv("air"),
-   "yards_after_catch_allowed":cv("yac"),
-   "blitzes":cv("bltz"),
-   "hurries":cv("hrry"),
-   "qb_knockdowns":cv("qbkd"),
-   "pressures":cv("prss"),
-   "missed_tackles":cv("m_tkl"),
-   "missed_tackle_rate":weighted_avg("m_tkl_percent"),
-   "combined_tackles":cv("comb")
+   "touchdowns_allowed":cv("def_receiving_td_allowed","td"),
+   "passer_rating_allowed":weighted_avg("def_passer_rating_allowed"),
+   "average_depth_of_target":weighted_avg("def_adot"),
+   "air_yards_allowed":cv("def_air_yards_completed","air"),
+   "yards_after_catch_allowed":cv("def_yards_after_catch","yac"),
+   "blitzes":cv("def_times_blitzed","bltz"),
+   "hurries":cv("def_times_hurried","hrry"),
+   "qb_knockdowns":cv("def_times_hitqb","qbkd"),
+   "pressures":cv("def_pressures","prss"),
+   "missed_tackles":cv("def_missed_tackles","m_tkl"),
+   "missed_tackle_rate":weighted_avg("def_missed_tackle_pct", "def_tackles_combined"),
+   "combined_tackles":cv("def_tackles_combined","comb")
   })
   output.append(row)
  for metric in METRICS:
@@ -197,16 +202,16 @@ def main():
  snaps=parse(download(SNAPS_URL))
  data=build(pbp,players,coverage,snaps)
  if not data: raise RuntimeError("No CB defensive-event data produced; refusing to overwrite snapshot.")
- payload={"season":SEASON,"source":"nflverse PFR advanced defense + play-by-play + players registry",
+ payload={"season":SEASON,"source":"nflverse weekly PFR advanced defense + play-by-play + players registry",
   "source_url":COVERAGE_URL,"snap_counts_url":SNAPS_URL,"updated_at":datetime.now(timezone.utc).isoformat(),
   "player_count":len(data),"players":data,"metrics":METRICS,
   "limitations":[
-   "Coverage allowed statistics are PFR charted defender-in-coverage values; they are not the NFL Next Gen Stats nearest-defender or coverage-responsibility model.",
+   "Coverage allowed statistics are rebuilt by summing weekly PFR charted defender-in-coverage rows; they are not the NFL Next Gen Stats nearest-defender or coverage-responsibility model.",
    "Defensive snap totals are summed from the weekly PFR snap-count feed. Coverage snaps and yards per coverage snap are not included and are not estimated.",
    "Missed tackle rate and pass-rush pressure counts are PFR advanced charting fields; rates are only shown where the source provides them."
   ]}
  os.makedirs(os.path.dirname(OUT) or ".",exist_ok=True)
  with open(OUT,"w",encoding="utf-8") as f: json.dump(payload,f,ensure_ascii=False,indent=2)
- print(f"CB refresh OK: {len(pbp):,} plays + {len(coverage):,} PFR defense rows + {len(snaps):,} snap rows, {len(data)} cornerbacks saved to {OUT}")
+ print(f"CB refresh OK: {len(pbp):,} plays + {len(coverage):,} weekly PFR defense rows + {len(snaps):,} snap rows, {len(data)} cornerbacks saved to {OUT}")
 
 if __name__=="__main__": main()
