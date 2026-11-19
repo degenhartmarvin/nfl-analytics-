@@ -41,7 +41,15 @@ METRICS=[
  {"key":"pressures","label":"Pressures","category":"Pass Rush","format":"number","higher_is_better":True},
  {"key":"missed_tackles","label":"Missed Tackles","category":"Tackling & Run Support","format":"number","higher_is_better":False},
  {"key":"missed_tackle_rate","label":"Missed Tackle Rate","category":"Tackling & Run Support","format":"percent","higher_is_better":False},
- {"key":"combined_tackles","label":"Combined Tackles","category":"Tackling & Run Support","format":"number","higher_is_better":True}
+ {"key":"combined_tackles","label":"Combined Tackles","category":"Tackling & Run Support","format":"number","higher_is_better":True},
+ {"key":"targets_per_100_defensive_snaps","label":"Targets per 100 Defensive Snaps","category":"Coverage Efficiency","format":"decimal","higher_is_better":False},
+ {"key":"yards_allowed_per_100_defensive_snaps","label":"Yards Allowed per 100 Defensive Snaps","category":"Coverage Efficiency","format":"decimal","higher_is_better":False},
+ {"key":"touchdown_rate_allowed","label":"TD Rate Allowed","category":"Coverage Efficiency","format":"percent","higher_is_better":False},
+ {"key":"interception_rate","label":"Interception Rate","category":"Ball Skills","format":"percent","higher_is_better":True},
+ {"key":"pass_breakup_rate","label":"Pass Breakup Rate","category":"Ball Skills","format":"percent","higher_is_better":True},
+ {"key":"forced_incompletion_rate","label":"Forced Incompletion Rate (INT + PBU)","category":"Ball Skills","format":"percent","higher_is_better":True},
+ {"key":"yac_per_reception_allowed","label":"YAC per Reception Allowed","category":"Coverage Efficiency","format":"decimal","higher_is_better":False},
+ {"key":"missed_tackles_per_game","label":"Missed Tackles per Game","category":"Tackling","format":"decimal","higher_is_better":False}
 ]
 
 def download(url):
@@ -163,6 +171,12 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
   name=p.get("display_name") or p.get("full_name") or p.get("name") or pid
   player_snaps=int(snap_totals.get(pid,0))
   team_snap_denominator=sum(team_season_totals[t] for t in player_teams.get(pid,set()))
+  player_pfr_ids={p.get("pfr_id"),p.get("player_pfr_id")}
+  games_played=len({(r.get("game_id") or r.get("pfr_game_id")) for r in snap_rows
+                    if (r.get("pfr_player_id") or r.get("player_pfr_id")) in player_pfr_ids and
+                    num(r.get("defense_snaps")) is not None and num(r.get("defense_snaps"))>0 and
+                    str(r.get("game_type","REG")).upper()=="REG" and
+                    str(r.get("season","")).strip()==str(SEASON)})
   row={"player_id":pid,"player_name":name,"team":team,"defensive_snaps":player_snaps,
        "defensive_snap_share":(player_snaps/team_snap_denominator if team_snap_denominator>0 else None)}
   for key in ("interceptions","passes_defended","forced_fumbles","solo_tackles","assisted_tackles","tackles_for_loss","qb_hits","defensive_penalties","defensive_penalty_yards"):
@@ -187,7 +201,16 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
    "pressures":cv("def_pressures","prss"),
    "missed_tackles":cv("def_missed_tackles","m_tkl"),
    "missed_tackle_rate":weighted_avg("def_missed_tackle_pct", "def_tackles_combined", "m_tkl_percent", "comb"),
-   "combined_tackles":cv("def_tackles_combined","comb")
+   "combined_tackles":cv("def_tackles_combined","comb"),
+   "games_played":games_played,
+   "targets_per_100_defensive_snaps":(targets/player_snaps*100 if targets is not None and player_snaps>0 else None),
+   "yards_allowed_per_100_defensive_snaps":(yards/player_snaps*100 if yards is not None and player_snaps>0 else None),
+   "touchdown_rate_allowed":(cv("def_receiving_td_allowed","td")/targets if targets and cv("def_receiving_td_allowed","td") is not None else None),
+   "interception_rate":(s["interceptions"]/targets if targets else None),
+   "pass_breakup_rate":(s["passes_defended"]/targets if targets else None),
+   "forced_incompletion_rate":((s["interceptions"]+s["passes_defended"])/targets if targets else None),
+   "yac_per_reception_allowed":(cv("def_yards_after_catch","yac")/completions if completions and cv("def_yards_after_catch","yac") is not None else None),
+   "missed_tackles_per_game":(cv("def_missed_tackles","m_tkl")/games_played if games_played>0 and cv("def_missed_tackles","m_tkl") is not None else None)
   })
   output.append(row)
  for metric in METRICS:
