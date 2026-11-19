@@ -13,6 +13,7 @@ OUT=os.environ.get("NFL_CB_OUTPUT","public/data/cb_players_2026.json")
 
 METRICS=[
  {"key":"defensive_snaps","label":"Defensive Snaps","category":"Snap Counts","format":"number","higher_is_better":True},
+ {"key":"defensive_snap_share","label":"Defensive Snap Share","category":"Snap Counts","format":"percent","higher_is_better":True},
  {"key":"interceptions","label":"Interceptions","category":"Ball Skills","format":"number","higher_is_better":True},
  {"key":"passes_defended","label":"Passes Defended / PBUs","category":"Ball Skills","format":"number","higher_is_better":True},
  {"key":"forced_fumbles","label":"Forced Fumbles","category":"Ball Skills","format":"number","higher_is_better":True},
@@ -67,13 +68,27 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
    roster[pid]=p
  pfr_to_gsis={p.get("pfr_id") or p.get("player_pfr_id"):pid for pid,p in roster.items() if p.get("pfr_id") or p.get("player_pfr_id")}
  snap_totals=defaultdict(float)
+ player_teams=defaultdict(set)
+ team_game_totals={}
  for row in snap_rows:
   if str(row.get("season","")).strip() != str(SEASON): continue
   if str(row.get("game_type","")).upper() != "REG": continue
   pfr_id=row.get("pfr_player_id") or row.get("player_pfr_id")
   pid=pfr_to_gsis.get(pfr_id)
   snaps=num(row.get("defense_snaps"))
-  if pid and snaps is not None: snap_totals[pid]+=snaps
+  pct=num(row.get("defense_pct"))
+  team=row.get("team") or ""
+  game=row.get("game_id") or row.get("pfr_game_id") or ""
+  if pid and snaps is not None:
+   snap_totals[pid]+=snaps
+   if team: player_teams[pid].add(team)
+  if team and game and snaps is not None and pct is not None and pct>0:
+   pct=pct/100 if pct>1 else pct
+   key=(team,game)
+   team_game_totals[key]=max(team_game_totals.get(key,0),snaps/pct)
+ team_season_totals=defaultdict(float)
+ for (team,game),total in team_game_totals.items():
+  team_season_totals[team]+=total
  stats=defaultdict(lambda:defaultdict(float))
  teams=defaultdict(Counter)
 
@@ -136,7 +151,10 @@ def build(pbp, player_rows, coverage_rows=(), snap_rows=()):
   targets=cv("tgt"); completions=cv("cmp"); yards=cv("yds")
   team=teams[pid].most_common(1)[0][0] if teams[pid] else (chosen[0].get("tm") if chosen else p.get("team") or "")
   name=p.get("display_name") or p.get("full_name") or p.get("name") or pid
-  row={"player_id":pid,"player_name":name,"team":team,"defensive_snaps":int(snap_totals.get(pid,0))}
+  player_snaps=int(snap_totals.get(pid,0))
+  team_snap_denominator=sum(team_season_totals[t] for t in player_teams.get(pid,set()))
+  row={"player_id":pid,"player_name":name,"team":team,"defensive_snaps":player_snaps,
+       "defensive_snap_share":(player_snaps/team_snap_denominator if team_snap_denominator>0 else None)}
   for key in ("interceptions","passes_defended","forced_fumbles","solo_tackles","assisted_tackles","tackles_for_loss","qb_hits","defensive_penalties","defensive_penalty_yards"):
    row[key]=int(s[key])
   row["sacks"]=s["sacks"]
