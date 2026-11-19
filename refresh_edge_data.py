@@ -305,7 +305,7 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=(), savant_rows=None, esp
             "missed_tackle_rate": missed_tackles / tackle_attempts if tackle_attempts > 0 else None,
             "sacks_per_game": sacks / len(games[pid]) if games[pid] else None,
             "sacks_per_defensive_snap": sacks / snaps if snaps > 0 else None,
-            "sack_rate": sacks / (savant_rows[normalize_name(name)]["pass_rush_snaps"]) if normalize_name(name) in savant_rows and savant_rows[normalize_name(name)].get("pass_rush_snaps") else None,
+            "sack_rate": ((savant_rows[normalize_name(name)].get("savant_sacks") if savant_rows[normalize_name(name)].get("savant_sacks") is not None else sacks) / savant_rows[normalize_name(name)]["pass_rush_snaps"]) if normalize_name(name) in savant_rows and savant_rows[normalize_name(name)].get("pass_rush_snaps") else None,
             "pressure_rate": savant_rows[normalize_name(name)]["savant_pressures"] / savant_rows[normalize_name(name)]["pass_rush_snaps"] if normalize_name(name) in savant_rows and savant_rows[normalize_name(name)].get("pass_rush_snaps") and savant_rows[normalize_name(name)].get("savant_pressures") is not None else None,
             "pass_rush_win_rate": espn_rows.get("pass_rush_win_rate", {}).get(normalize_name(name)),
             "run_stop_win_rate": espn_rows.get("run_stop_win_rate", {}).get(normalize_name(name)),
@@ -353,7 +353,7 @@ def main():
         "player_count": len(data), "players": data, "metrics": METRICS,
         "limitations": [
             "The combined group uses the roster positions DE, OLB and EDGE; public roster data does not reliably identify each team's defensive front, so some 4-3 off-ball OLB designations may be included.",
-            "Sack Rate and Pressure Rate use NFL/Savant pass-rush snaps and matching numerator fields; Sacks / Defensive Snaps is also shown separately. The displayed pressure total switches to NFL/Savant when available so its numerator matches Pressure Rate; otherwise it falls back to PFR.",
+            "Sack Rate and Pressure Rate use NFL/Savant pass-rush snaps and matching numerator fields; Sacks / Defensive Snaps is also shown separately. The displayed pressure total switches to NFL/Savant when available so its numerator matches Pressure Rate; otherwise it falls back to PFR. Sack Rate uses NFL/Savant sacks when available.",
             "Quick Pressure Rate and Double-Team Rate remain blank because no reproducible public player-level 2026 feed is available. ESPN Win Rates are populated only for players in the published Edge top-20 (pass rush) and top-10 (run stop). No estimates are substituted."
             "PFR pressure totals are charted pressure counts. TFLs and QB hits are player-attributed play-by-play events."
         ]
