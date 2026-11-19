@@ -40,6 +40,8 @@ class OLinePipelineTests(unittest.TestCase):
         self.assertAlmostEqual(cin["pressure_rate"],1.0)
         self.assertEqual(cin["tfls_allowed"],1)
         self.assertAlmostEqual(cin["tfl_rate"],1/3)
+        self.assertEqual(cin["negative_plays_allowed"],2)
+        self.assertAlmostEqual(cin["negative_play_rate"],2/6)
         self.assertEqual(cin["carries_faced"],3)
         self.assertAlmostEqual(cin["yards_per_carry"],16/3)
         self.assertAlmostEqual(cin["stuff_rate"],1/3)
