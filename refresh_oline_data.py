@@ -17,7 +17,7 @@ METRICS=[
  {"id":"sacks_allowed","name":"Sacks Allowed","category":"Pass Protection","unit":"Sacks","higher_is_better":False},
  {"id":"sack_rate","name":"Sack Rate Allowed","category":"Pass Protection","unit":"% Dropbacks","higher_is_better":False},
  {"id":"sack_yards_lost","name":"Sack Yards Lost","category":"Pass Protection","unit":"Yards","higher_is_better":False},
- {"id":"pressures_allowed","name":"Pressures Allowed (Sacks + QB Hits)","category":"Pass Protection","unit":"Pressures","higher_is_better":False},
+ {"id":"pressures_allowed","name":"Pressures Allowed (Sacks or QB Hits)","category":"Pass Protection","unit":"Pressures","higher_is_better":False},
  {"id":"pressure_rate","name":"Pressure Rate Allowed (Sacks + QB Hits)","category":"Pass Protection","unit":"% Dropbacks","higher_is_better":False},
  {"id":"pass_attempts","name":"Pass Attempts Faced","category":"Volume","unit":"Attempts","higher_is_better":None},
  {"id":"carries_faced","name":"Run-Block Opportunities (Carries)","category":"Volume","unit":"Carries","higher_is_better":None},
@@ -70,6 +70,7 @@ def calculate(rows, pfr_rush=None):
     s["sack_yards_lost"]+=abs(fnum(r.get("yards_gained")) or 0)
     s["dropbacks"]+=1
    if truth(r.get("qb_hit")): s["qb_hits_allowed"]+=1
+   if truth(r.get("qb_hit")) or truth(r.get("sack")): s["pressure_events"]+=1
   elif kind=="run" and truth(r.get("rush_attempt")):
    yards=fnum(r.get("yards_gained"))
    if yards is None: continue
@@ -107,7 +108,7 @@ def calculate(rows, pfr_rush=None):
   row={"team":team,"games":len(games[team]),"dropbacks":int(dropbacks),
    "pass_attempts":int(s["pass_attempts"]),"carries_faced":int(carries),
    "sacks_allowed":int(s["sacks_allowed"]),"sack_rate":s["sacks_allowed"]/dropbacks if dropbacks else None,
-   "pressures_allowed":int(s["sacks_allowed"]+s["qb_hits_allowed"]),"pressure_rate":(s["sacks_allowed"]+s["qb_hits_allowed"])/dropbacks if dropbacks else None,
+   "pressures_allowed":int(s["pressure_events"]),"pressure_rate":s["pressure_events"]/dropbacks if dropbacks else None,
    "rush_yards":int(s["rush_yards"]),"yards_per_carry":s["rush_yards"]/carries if carries else None,
    "tfls_allowed":int(s["tfls_allowed"]),"tfl_rate":s["tfls_allowed"]/carries if carries else None,
    "rush_yards_before_contact":ybc_by_team.get(team) if pfr_rush else None,"yards_before_contact_per_carry":ybc_by_team.get(team)/carries if pfr_rush and carries else None,
