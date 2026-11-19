@@ -35,7 +35,7 @@ def download(url):
         return response.read()
 
 def parse(raw):
-    if raw[:2] == b"\\x1f\\x8b":
+    if raw[:2] == b"\x1f\x8b":
         raw = gzip.decompress(raw)
     return list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
 
