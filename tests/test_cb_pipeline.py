@@ -24,7 +24,9 @@ class CornerbackPipelineTests(unittest.TestCase):
         self.assertEqual(len(data),2)
         one=next(p for p in data if p["player_id"]=="CB1")
         two=next(p for p in data if p["player_id"]=="CB2")
-        self.assertEqual(one["defensive_snaps"],120)\n        self.assertEqual(two["defensive_snaps"],80)\n        self.assertEqual(one["targets_allowed"],20)
+        self.assertEqual(one["defensive_snaps"],120)
+        self.assertEqual(two["defensive_snaps"],80)
+        self.assertEqual(one["targets_allowed"],20)
         self.assertEqual(one["completions_allowed"],10)
         self.assertAlmostEqual(one["completion_rate_allowed"],0.5)
         self.assertAlmostEqual(one["yards_per_target_allowed"],5.0)
@@ -42,7 +44,8 @@ class CornerbackPipelineTests(unittest.TestCase):
         self.assertEqual(one["defensive_penalties"],1)
         self.assertEqual(one["defensive_penalty_yards"],10)
         self.assertEqual(two["sacks"],1)
-        self.assertEqual(one["interceptions_rank"],1)\n        self.assertFalse(next(m for m in __import__("refresh_cb_data").METRICS if m["key"]=="targets_allowed")["higher_is_better"])
+        self.assertEqual(one["interceptions_rank"],1)
+        self.assertFalse(next(m for m in __import__("refresh_cb_data").METRICS if m["key"]=="targets_allowed")["higher_is_better"])
         self.assertEqual(two["interceptions_rank"],2)
 
 if __name__=="__main__":
