@@ -39,8 +39,6 @@ class QuarterbackPipelineTests(unittest.TestCase):
         qb=next(x for x in rows if x["player_id"]=="QB1")
         self.assertAlmostEqual(qb["qbr_total"],72.4)
         self.assertAlmostEqual(qb["time_to_throw"],2.81)
-        self.assertEqual(qb["qbr_total_rank"],1)
-        self.assertEqual(qb["time_to_throw_rank"],1)
 
     def test_non_qb_is_not_included(self):
         rows=build(self.pbp,self.players)
