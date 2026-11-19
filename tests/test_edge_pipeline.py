@@ -1,5 +1,5 @@
 import unittest
-from refresh_edge_data import build
+from refresh_edge_data import build, parse_savant, parse_espn_win_rates
 
 class EdgePipelineTests(unittest.TestCase):
     def test_combines_de_and_olb_and_excludes_interior(self):
@@ -65,6 +65,25 @@ class EdgePipelineTests(unittest.TestCase):
         self.assertAlmostEqual(row["pass_rush_win_rate"],0.25)
         self.assertAlmostEqual(row["run_stop_win_rate"],0.30)
         self.assertIsNone(row["quick_pressure_rate"])
+
+    def test_external_html_sources_parse_edge_leaderboards(self):
+        savant_html = """
+        <table><tr><th>Rank</th><th>Player</th><th>Pos</th><th>Team</th><th>Pressure %</th><th>Pressures</th><th>Sacks</th><th>QB Hits</th><th>Pass Rushes</th></tr>
+        <tr><td>1</td><td>Test Edge</td><td>EDGE</td><td>CIN</td><td>10.0%</td><td>10</td><td>4.0</td><td>6</td><td>100</td></tr></table>
+        """
+        espn_html = """
+        <h3>Edge rushers — pass rush win rate</h3>
+        <table><tr><th>#</th><th>Move</th><th>Player</th><th>Team</th><th>Win rate</th><th>Won / snaps</th></tr>
+        <tr><td>1</td><td>new</td><td>Test Edge</td><td>CIN</td><td>25%</td><td>25/100</td></tr></table>
+        <h3>Edge rushers — run stop win rate</h3>
+        <table><tr><th>#</th><th>Move</th><th>Player</th><th>Team</th><th>Win rate</th><th>Won / snaps</th></tr>
+        <tr><td>1</td><td>new</td><td>Test Edge</td><td>CIN</td><td>30%</td><td>30/100</td></tr></table>
+        """
+        savant = parse_savant(savant_html)
+        espn = parse_espn_win_rates(espn_html)
+        self.assertEqual(savant["testedge"]["pass_rush_snaps"],100)
+        self.assertAlmostEqual(espn["pass_rush_win_rate"]["testedge"],0.25)
+        self.assertAlmostEqual(espn["run_stop_win_rate"]["testedge"],0.30)
 
 if __name__ == "__main__":
     unittest.main()
