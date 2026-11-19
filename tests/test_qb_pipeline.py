@@ -32,6 +32,16 @@ class QuarterbackPipelineTests(unittest.TestCase):
         self.assertAlmostEqual(qb["epa_per_dropback"],-0.6)
         self.assertAlmostEqual(qb["cpoe"],-1.0)
 
+    def test_qbr_and_time_to_throw_are_joined_by_player_name(self):
+        qbr=[{"season":"2026","season_type":"Regular","name_display":"Test QB","qbr_total":"72.4"}]
+        ngs=[{"season":"2026","season_type":"REG","week":"0","player_display_name":"Test QB","avg_time_to_throw":"2.81"}]
+        rows=build(self.pbp,self.players,qbr,ngs)
+        qb=next(x for x in rows if x["player_id"]=="QB1")
+        self.assertAlmostEqual(qb["qbr_total"],72.4)
+        self.assertAlmostEqual(qb["time_to_throw"],2.81)
+        self.assertEqual(qb["qbr_total_rank"],1)
+        self.assertEqual(qb["time_to_throw_rank"],1)
+
     def test_non_qb_is_not_included(self):
         rows=build(self.pbp,self.players)
         self.assertFalse(any(x["player_id"]=="WR1" for x in rows))
