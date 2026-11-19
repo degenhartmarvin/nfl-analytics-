@@ -123,6 +123,7 @@ def build(pbp, player_rows, qbr_rows=None, ngs_rows=None):
             if ry>=10: s["explosive_rushes"]+=1
             if truth(row.get("fumble_lost")) and row.get("fumbler_player_id")==rid: s["fumbles_lost"]+=1
 
+    qbr_map,ttt_map=supplemental_maps(qbr_rows or [],ngs_rows or [],SEASON)
     out=[]
     for pid,s in stats.items():
         p=roster[pid]; att=s["attempts"]; comp=s["completions"]; yds=s["pass_yards"]
@@ -133,7 +134,6 @@ def build(pbp, player_rows, qbr_rows=None, ngs_rows=None):
         team_att=team_attempts.get(team,0)
         if not team_att or att/team_att <= 0.50:
             continue
-        qbr_map,ttt_map=supplemental_maps(qbr_rows or [],ngs_rows or [],SEASON)
         name=p.get("display_name") or p.get("full_name") or p.get("name") or pid
         c_pct=comp/att if att else None
         ypa=yds/att if att else None
