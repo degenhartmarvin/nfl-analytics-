@@ -2,7 +2,7 @@
   "season": 2026,
   "source": "nflverse play-by-play",
   "source_url": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2026.csv.gz",
-  "updated_at": "2026-11-19T10:22:41.186023+00:00",
+  "updated_at": "2026-11-19T10:23:35.989476+00:00",
   "team_count": 32,
   "plays_loaded": 26246,
   "data": [
