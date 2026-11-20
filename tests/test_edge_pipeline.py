@@ -50,7 +50,7 @@ class EdgePipelineTests(unittest.TestCase):
         self.assertEqual(de["sacks_rank"],1)
         self.assertEqual(olb["sacks_rank"],2)
 
-    def test_savant_and_espn_advanced_rates_are_joined_by_player(self):
+    def test_pass_rush_rates_stay_blank_without_matching_snap_source(self):
         players = [{"gsis_id":"EDGE1","pfr_id":"PFR1","position":"DE","display_name":"Test Edge"}]
         defense = [{"season":"2026","game_type":"REG","pfr_player_id":"PFR1","team":"CIN","def_pressures":"6"}]
         snaps = [{"season":"2026","game_type":"REG","game_id":"G1","team":"CIN","pfr_player_id":"PFR1","defense_snaps":"60","defense_pct":"0.6"}]
@@ -58,9 +58,10 @@ class EdgePipelineTests(unittest.TestCase):
         savant = {"testedge":{"pass_rush_snaps":100,"savant_pressures":8,"savant_sacks":4}}
         espn = {"pass_rush_win_rate":{"testedge":0.25},"run_stop_win_rate":{"testedge":0.30}}
         row = build(pbp, players, defense, snaps, savant, espn)[0]
-        self.assertEqual(row["pass_rush_snaps"],100)
-        self.assertAlmostEqual(row["sack_rate"],0.04)
-        self.assertAlmostEqual(row["pressure_rate"],0.08)
+        self.assertIsNone(row["pass_rush_snaps"])
+        self.assertIsNone(row["sack_rate"])
+        self.assertIsNone(row["pressure_rate"])
+        self.assertAlmostEqual(row["pressure_per_defensive_snap"],6/60)
         self.assertAlmostEqual(row["sacks_per_defensive_snap"],1/60)
         self.assertAlmostEqual(row["pass_rush_win_rate"],0.25)
         self.assertAlmostEqual(row["run_stop_win_rate"],0.30)
