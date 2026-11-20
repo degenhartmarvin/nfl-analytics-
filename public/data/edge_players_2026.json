@@ -1,12 +1,12 @@
 {
   "season": 2026,
-  "source": "nflverse PFR weekly defense + PBP event stats + snap counts; ESPN win-rate rankings via NFL Lines",
+  "source": "nflverse PFR weekly defense + PBP event stats + snap counts; NFL/Savant top-20 pass-rush snaps; ESPN win rates via NFL Lines",
   "advanced_sources": {
     "espn_win_rates": "https://nfllines.com/defensive-line-ratings/players/"
   },
   "source_url": "https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_week_def_2026.csv",
   "snap_counts_url": "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2026.csv",
-  "updated_at": "2026-11-20T21:07:45.999997+00:00",
+  "updated_at": "2026-11-20T21:23:22.875419+00:00",
   "player_count": 128,
   "players": [
     {
@@ -6540,7 +6540,7 @@
     },
     {
       "key": "sack_rate",
-      "label": "Sack Rate (Sacks / Pass-Rush Snaps)",
+      "label": "Sack Rate (PFR Sacks / Savant Pass-Rush Snaps)",
       "category": "Pass-Rush-Effizienz",
       "format": "percent",
       "higher_is_better": true
@@ -6562,7 +6562,7 @@
     },
     {
       "key": "pass_rush_snaps",
-      "label": "Pass-Rush Snaps",
+      "label": "Pass-Rush Snaps (NFL/Savant Top 20)",
       "category": "Pass-Rush-Einsatz",
       "format": "number",
       "higher_is_better": true
@@ -6597,7 +6597,7 @@
     },
     {
       "key": "pressure_rate",
-      "label": "Pressure Rate (Pressures / Pass-Rush Snaps)",
+      "label": "Pressure Rate (PFR Pressures / Savant Pass-Rush Snaps)",
       "category": "Pressure & Pass-Rush-Effizienz",
       "format": "percent",
       "higher_is_better": true
@@ -6721,8 +6721,8 @@
   ],
   "limitations": [
     "The combined group uses the roster positions DE, OLB and EDGE; public roster data does not reliably identify each team's defensive front, so some 4-3 off-ball OLB designations may be included.",
-    "Pressure pro Defensive Snap uses PFR pressures divided by defensive snaps. Pressure Rate and Sack Rate per Pass-Rush Snap remain blank until a reliable matching pass-rush-snap feed is available.",
-    "Quick Pressure Rate and Double-Team Rate remain blank because no reproducible public player-level feed is integrated. ESPN Win Rates are populated only for players in the published Edge top-20 (pass rush) and top-10 (run stop). No estimates are substituted.",
+    "Pass-Rush Snaps are imported only for NFL/Savant's top 20 edge-rusher leaderboard. PFR pressures and sacks are retained unchanged; Pressure Rate and Sack Rate divide those PFR totals by NFL/Savant pass-rush snaps. No Savant pressure or sack totals are used.",
+    "Quick Pressure Rate and Double-Team Rate remain blank because no reproducible public player-level feed is integrated. ESPN Win Rates are imported from its published Edge top-20 (pass rush) and top-10 (run stop), republished by NFL Lines. No estimates are substituted.",
     "PFR pressure, sack, hurry and knockdown totals are aggregated from weekly PFR defensive advanced stats when the relevant columns are present. TFLs and forced fumbles remain player-attributed play-by-play events."
   ]
 }
