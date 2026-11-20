@@ -58,9 +58,9 @@ class EdgePipelineTests(unittest.TestCase):
         savant = {"testedge":{"pass_rush_snaps":100,"savant_pressures":8,"savant_sacks":4}}
         espn = {"pass_rush_win_rate":{"testedge":0.25},"run_stop_win_rate":{"testedge":0.30}}
         row = build(pbp, players, defense, snaps, savant, espn)[0]
-        self.assertIsNone(row["pass_rush_snaps"])
-        self.assertIsNone(row["sack_rate"])
-        self.assertIsNone(row["pressure_rate"])
+        self.assertEqual(row["pass_rush_snaps"],100)
+        self.assertAlmostEqual(row["sack_rate"],1/100)
+        self.assertAlmostEqual(row["pressure_rate"],6/100)
         self.assertAlmostEqual(row["pressure_per_defensive_snap"],6/60)
         self.assertAlmostEqual(row["sacks_per_defensive_snap"],1/60)
         self.assertAlmostEqual(row["pass_rush_win_rate"],0.25)
@@ -85,6 +85,22 @@ class EdgePipelineTests(unittest.TestCase):
         self.assertEqual(savant["testedge"]["pass_rush_snaps"],100)
         self.assertAlmostEqual(espn["pass_rush_win_rate"]["testedge"],0.25)
         self.assertAlmostEqual(espn["run_stop_win_rate"]["testedge"],0.30)
+        # The ESPN season leaderboard contains 20 edge pass-rush entries and 10 run-stop entries.
+        pr_rows = "".join(
+            f"<tr><td>{i}</td><td>move</td><td>Pass Edge {i}</td><td>CIN</td><td>{30-i}%</td><td>30/100</td></tr>"
+            for i in range(1, 21)
+        )
+        rs_rows = "".join(
+            f"<tr><td>{i}</td><td>move</td><td>Run Edge {i}</td><td>CIN</td><td>{20-i}%</td><td>20/100</td></tr>"
+            for i in range(1, 11)
+        )
+        full_espn_html = (
+            "<h3>Edge rushers — pass rush win rate</h3><table>" + pr_rows + "</table>"
+            "<h3>Edge rushers — run stop win rate</h3><table>" + rs_rows + "</table>"
+        )
+        full_espn = parse_espn_win_rates(full_espn_html)
+        self.assertEqual(len(full_espn["pass_rush_win_rate"]), 20)
+        self.assertEqual(len(full_espn["run_stop_win_rate"]), 10)
 
 if __name__ == "__main__":
     unittest.main()
