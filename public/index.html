@@ -207,15 +207,15 @@ const qbMetricList=[
 {key:'longest_rush',label:'Longest Rush',cat:'Rushing',format:'decimal',high:true}];
 const edgeMetricList=[
 {key:'sacks',label:'Sacks',cat:'Pass-Rush-Produktion',format:'decimal',high:true},
-{key:'sack_rate',label:'Sack Rate (Sacks / Pass-Rush Snaps)',cat:'Pass-Rush-Effizienz',format:'pct',high:true},
+{key:'sack_rate',label:'Sack Rate (PFR Sacks / Savant Pass-Rush Snaps)',cat:'Pass-Rush-Effizienz',format:'pct',high:true},
 {key:'sacks_per_defensive_snap',label:'Sacks / Defensive Snaps',cat:'Pass-Rush-Effizienz',format:'pct',high:true},
 {key:'pressure_per_defensive_snap',label:'Pressure pro Defensive Snap',cat:'Pressure & Pass-Rush-Effizienz',format:'pct',high:true,note:'PFR Pressures geteilt durch Defensive Snaps; kein Ersatz für Pressure Rate pro Pass-Rush-Snap.'},
-{key:'pass_rush_snaps',label:'Pass-Rush Snaps',cat:'Pass-Rush-Einsatz',format:'number',high:true},
+{key:'pass_rush_snaps',label:'Pass-Rush Snaps (NFL/Savant Top 20)',cat:'Pass-Rush-Einsatz',format:'number',high:true},
 {key:'pressures',label:'Pressures',cat:'Pressure & Pass-Rush-Effizienz',format:'number',high:true},
 {key:'hurries',label:'QB Hurries',cat:'Pressure & Pass-Rush-Effizienz',format:'number',high:true},
 {key:'knockdowns',label:'QB Knockdowns',cat:'Pressure & Pass-Rush-Effizienz',format:'number',high:true},
 {key:'blitzes',label:'Blitzes',cat:'Pass-Rush-Einsatz',format:'number',high:true},
-{key:'pressure_rate',label:'Pressure Rate (Pressures / Pass-Rush Snaps)',cat:'Pressure & Pass-Rush-Effizienz',format:'pct',high:true},
+{key:'pressure_rate',label:'Pressure Rate (PFR Pressures / Savant Pass-Rush Snaps)',cat:'Pressure & Pass-Rush-Effizienz',format:'pct',high:true},
 {key:'qb_hits',label:'QB Hits',cat:'Pass-Rush-Produktion',format:'number',high:true},
 {key:'tfls',label:'Tackles for Loss (TFLs)',cat:'Disruptive Plays',format:'number',high:true},
 {key:'forced_fumbles',label:'Forced Fumbles',cat:'Disruptive Plays',format:'number',high:true},
@@ -230,8 +230,8 @@ const edgeMetricList=[
 {key:'quick_pressure_rate',label:'Quick Pressure Rate (unter 2,5 Sek.)',cat:'Pressure & Pass-Rush-Effizienz',format:'pct',high:true,note:'Nicht verfügbar: keine individuellen Quick-Pressure-Daten im automatisierten Feed.'},
 {key:'negative_plays_forced_rate',label:'Negative Plays Forced Rate (Sacks + TFLs je Defensive Snap)',cat:'Disruptive Plays',format:'pct',high:true},
 {key:'double_team_rate',label:'Double-Team Rate',cat:'Gegnerische Aufmerksamkeit',format:'pct',high:true,note:'Nicht verfügbar: keine verlässlichen individuellen Double-Team-Snap-Zahlen.'},
-{key:'pass_rush_win_rate',label:'Pass Rush Win Rate (ESPN, Top 20)',cat:'Pass-Rush-Effizienz',format:'pct',high:true,note:'ESPN veröffentlicht nur die Top 20 der Edge Rusher; Spieler außerhalb der Liste bleiben leer.'},
-{key:'run_stop_win_rate',label:'Run Stop Win Rate (ESPN, Top 10)',cat:'Run Defense',format:'pct',high:true,note:'ESPN veröffentlicht nur die Top 10 der Edge Rusher; Spieler außerhalb der Liste bleiben leer.'}
+{key:'pass_rush_win_rate',label:'Pass Rush Win Rate (ESPN, Top 20)',cat:'Pass-Rush-Effizienz',format:'pct',high:true,note:'Offizielle ESPN-Edge-Rangliste: Top 20; Werte werden über NFL Lines übernommen.'},
+{key:'run_stop_win_rate',label:'Run Stop Win Rate (ESPN, Top 10)',cat:'Run Defense',format:'pct',high:true,note:'Offizielle ESPN-Edge-Rangliste: Top 10; Werte werden über NFL Lines übernommen.'}
 ];
 let playerSnapshot=null,playerSnapshots={},selectedPlayerMetric='receiving_yards';
 function activePosition(){return el('playerPosition').value||'WR';}
