@@ -83,6 +83,14 @@ class EdgePipelineTests(unittest.TestCase):
         savant = parse_savant(savant_html)
         espn = parse_espn_win_rates(espn_html)
         self.assertEqual(savant["testedge"]["pass_rush_snaps"],100)
+        # Current NFL/Savant layout combines position and team into one cell.
+        combined_layout = """
+        <table><tr><th>Rank</th><th>Player</th><th>Pos/Team</th><th>Pressure %</th><th>Pressures</th><th>Sacks</th><th>QB Hits</th><th>Pass Rushes</th></tr>
+        <tr><td>1</td><td>Maxx Crosby</td><td>EDGELV</td><td>9.0%</td><td>27</td><td>5.0</td><td>21</td><td>299</td></tr>
+        </table>
+        """
+        combined = parse_savant(combined_layout)
+        self.assertEqual(combined["maxxcrosby"]["pass_rush_snaps"],299)
         self.assertAlmostEqual(espn["pass_rush_win_rate"]["testedge"],0.25)
         self.assertAlmostEqual(espn["run_stop_win_rate"]["testedge"],0.30)
         # The ESPN season leaderboard contains 20 edge pass-rush entries and 10 run-stop entries.
