@@ -22,9 +22,13 @@ permissions:
   id-token: write
 concurrency:
   group: nfl-pages
-  cancel-in-progress: true
+  # Do not cancel a refresh while it is committing its generated JSON files.
+  cancel-in-progress: false
 jobs:
   refresh-and-deploy:
+    # A snapshot commit made by this workflow must not start a second,
+    # overlapping refresh/deploy run.
+    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -56,8 +60,6 @@ jobs:
             echo "Snapshot unchanged."
           else
             git commit -m "Update NFL 2026 team, WR, QB, RB, CB, edge and offensive line data snapshots"
-            # Another workflow or a manual GitHub edit may have updated main
-            # while this job was generating the data. Rebase before pushing.
             git fetch origin main
             git rebase origin/main
             git push origin HEAD:main
