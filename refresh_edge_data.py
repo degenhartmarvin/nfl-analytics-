@@ -120,17 +120,20 @@ def parse_savant(raw):
     found = {}
     for table in parser.tables:
         for cells in table["rows"]:
-            # Rank, player, position, team, pressure %, pressures, sacks, QB hits, pass-rush snaps, snap share
-            if len(cells) < 9 or not cells[0].strip().isdigit():
+            # NFL/Savant currently renders Pos + Team as one cell (e.g. EDGEBUF),
+            # while older table layouts used separate Pos and Team cells.
+            if len(cells) < 8 or not cells[0].strip().isdigit():
                 continue
-            # Only import the leaderboard's top 20 edge rushers, as agreed.
-            if int(cells[0]) > 20:
+            rank = int(cells[0])
+            if rank > 20:
                 continue
-            position = cells[2].upper()
+            position = cells[2].upper().replace(" ", "")
             if not any(position.startswith(x) for x in ("EDGE", "DE", "OLB")):
                 continue
             name = cells[1]
-            rush_snaps = num(cells[8].replace(",", ""))
+            # Combined Pos+Team layout has 8 cells; separate Pos and Team has 9+.
+            rush_index = 7 if len(cells) == 8 else 8
+            rush_snaps = num(cells[rush_index].replace(",", ""))
             if rush_snaps is not None and rush_snaps > 0:
                 found[normalize_name(name)] = {"pass_rush_snaps": rush_snaps}
     return found
@@ -344,6 +347,11 @@ def main():
     savant_raw = optional_download(SAVANT_URL)
     espn_raw = optional_download(ESPN_WIN_RATE_URL)
     savant_rows = parse_savant(savant_raw) if savant_raw else {}
+    # Do not silently publish a snapshot with missing Savant denominator data.
+    # The live leaderboard has a top-20 list; fewer than 10 parsed rows signals
+    # a source/layout regression and should fail before the JSON snapshot is replaced.
+    if len(savant_rows) < 10:
+        raise RuntimeError(f"NFL/Savant pass-rush snap parser returned only {len(savant_rows)} rows; refusing to publish incomplete snap data.")
     espn_rows = parse_espn_win_rates(espn_raw) if espn_raw else {"pass_rush_win_rate": {}, "run_stop_win_rate": {}}
     data = build(pbp, players, defense, snaps, savant_rows, espn_rows)
     if not data:
