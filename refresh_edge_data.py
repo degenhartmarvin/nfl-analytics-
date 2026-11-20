@@ -20,15 +20,15 @@ ESPN_WIN_RATE_URL = "https://nfllines.com/defensive-line-ratings/players/"
 
 METRICS = [
  {"key":"sacks","label":"Sacks","category":"Pass-Rush-Produktion","format":"decimal","higher_is_better":True},
- {"key":"sack_rate","label":"Sack Rate (Sacks / Pass-Rush Snaps)","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True},
+ {"key":"sack_rate","label":"Sack Rate (PFR Sacks / Savant Pass-Rush Snaps)","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True},
  {"key":"sacks_per_defensive_snap","label":"Sacks / Defensive Snaps","category":"Pass-Rush-Effizienz","format":"percent","higher_is_better":True},
  {"key":"pressure_per_defensive_snap","label":"Pressure pro Defensive Snap","category":"Pressure & Pass-Rush-Effizienz","format":"percent","higher_is_better":True,"availability_note":"PFR Pressures geteilt durch Defensive Snaps; kein Ersatz für Pressure Rate pro Pass-Rush-Snap."},
- {"key":"pass_rush_snaps","label":"Pass-Rush Snaps","category":"Pass-Rush-Einsatz","format":"number","higher_is_better":True},
+ {"key":"pass_rush_snaps","label":"Pass-Rush Snaps (NFL/Savant Top 20)","category":"Pass-Rush-Einsatz","format":"number","higher_is_better":True},
  {"key":"pressures","label":"Pressures","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
  {"key":"hurries","label":"QB Hurries","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
  {"key":"knockdowns","label":"QB Knockdowns","category":"Pressure & Pass-Rush-Effizienz","format":"number","higher_is_better":True},
  {"key":"blitzes","label":"Blitzes","category":"Pass-Rush-Einsatz","format":"number","higher_is_better":True},
- {"key":"pressure_rate","label":"Pressure Rate (Pressures / Pass-Rush Snaps)","category":"Pressure & Pass-Rush-Effizienz","format":"percent","higher_is_better":True},
+ {"key":"pressure_rate","label":"Pressure Rate (PFR Pressures / Savant Pass-Rush Snaps)","category":"Pressure & Pass-Rush-Effizienz","format":"percent","higher_is_better":True},
  {"key":"qb_hits","label":"QB Hits","category":"Pass-Rush-Produktion","format":"number","higher_is_better":True},
  {"key":"tfls","label":"Tackles for Loss (TFLs)","category":"Disruptive Plays","format":"number","higher_is_better":True},
  {"key":"forced_fumbles","label":"Forced Fumbles","category":"Disruptive Plays","format":"number","higher_is_better":True},
@@ -59,7 +59,7 @@ def parse(raw):
 
 
 class StatTableParser(HTMLParser):
-    """Small standard-library HTML table reader used by the scheduled refresh."""
+    """Small standard-library HTML table reader that safely ignores nested tables."""
     def __init__(self):
         super().__init__()
         self.tables = []
@@ -67,6 +67,7 @@ class StatTableParser(HTMLParser):
         self.heading_parts = []
         self.in_heading = False
         self.table = None
+        self.table_depth = 0
         self.row = None
         self.cell = None
 
@@ -75,11 +76,13 @@ class StatTableParser(HTMLParser):
             self.in_heading = True
             self.heading_parts = []
         elif tag == "table":
-            self.table = {"heading": self.heading, "rows": []}
-            self.tables.append(self.table)
-        elif tag == "tr" and self.table is not None:
+            self.table_depth += 1
+            if self.table_depth == 1:
+                self.table = {"heading": self.heading, "rows": []}
+                self.tables.append(self.table)
+        elif tag == "tr" and self.table is not None and self.table_depth == 1:
             self.row = []
-        elif tag in ("td", "th") and self.row is not None:
+        elif tag in ("td", "th") and self.row is not None and self.table_depth == 1:
             self.cell = []
 
     def handle_data(self, data):
@@ -88,22 +91,24 @@ class StatTableParser(HTMLParser):
             return
         if self.in_heading:
             self.heading_parts.append(value)
-        if self.cell is not None:
+        if self.cell is not None and self.table_depth == 1:
             self.cell.append(value)
 
     def handle_endtag(self, tag):
         if tag in ("h1", "h2", "h3", "h4", "h5", "h6") and self.in_heading:
             self.heading = " ".join(self.heading_parts).strip()
             self.in_heading = False
-        elif tag in ("td", "th") and self.cell is not None and self.row is not None:
+        elif tag in ("td", "th") and self.cell is not None and self.row is not None and self.table_depth == 1:
             self.row.append(" ".join(self.cell).strip())
             self.cell = None
-        elif tag == "tr" and self.row is not None and self.table is not None:
+        elif tag == "tr" and self.row is not None and self.table is not None and self.table_depth == 1:
             if self.row:
                 self.table["rows"].append(self.row)
             self.row = None
-        elif tag == "table":
-            self.table = None
+        elif tag == "table" and self.table_depth:
+            self.table_depth -= 1
+            if self.table_depth == 0:
+                self.table = None
 
 def normalize_name(value):
     value = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode().lower()
@@ -118,19 +123,16 @@ def parse_savant(raw):
             # Rank, player, position, team, pressure %, pressures, sacks, QB hits, pass-rush snaps, snap share
             if len(cells) < 9 or not cells[0].strip().isdigit():
                 continue
+            # Only import the leaderboard's top 20 edge rushers, as agreed.
+            if int(cells[0]) > 20:
+                continue
             position = cells[2].upper()
             if not any(position.startswith(x) for x in ("EDGE", "DE", "OLB")):
                 continue
             name = cells[1]
-            pressure_count = num(cells[5])
-            sacks = num(cells[6])
             rush_snaps = num(cells[8].replace(",", ""))
-            if rush_snaps and rush_snaps > 0:
-                found[normalize_name(name)] = {
-                    "pass_rush_snaps": rush_snaps,
-                    "savant_pressures": pressure_count,
-                    "savant_sacks": sacks
-                }
+            if rush_snaps is not None and rush_snaps > 0:
+                found[normalize_name(name)] = {"pass_rush_snaps": rush_snaps}
     return found
 
 def parse_espn_win_rates(raw):
@@ -296,7 +298,7 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=(), savant_rows=None, esp
             "defensive_snap_share": snaps / snap_denominator if snap_denominator > 0 else None,
             "games_played": len(games[pid]),
             "sacks": sacks, "pressures": pressures or None,
-            "pass_rush_snaps": None,
+            "pass_rush_snaps": (savant_rows.get(normalize_name(name)) or {}).get("pass_rush_snaps"),
             "hurries": pfr.get("hurries") or None, "knockdowns": pfr.get("knockdowns") or None,
             "blitzes": pfr.get("blitzes") or None,
             "qb_hits": int(s["qb_hits"]), "tfls": int(tfls),
@@ -306,8 +308,8 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=(), savant_rows=None, esp
             "missed_tackle_rate": missed_tackles / tackle_attempts if tackle_attempts > 0 else None,
             "sacks_per_game": sacks / len(games[pid]) if games[pid] else None,
             "sacks_per_defensive_snap": sacks / snaps if snaps > 0 else None,
-            "sack_rate": None,
-            "pressure_rate": None,
+            "sack_rate": sacks / (savant_rows.get(normalize_name(name)) or {}).get("pass_rush_snaps") if (savant_rows.get(normalize_name(name)) or {}).get("pass_rush_snaps", 0) > 0 else None,
+            "pressure_rate": pressures / (savant_rows.get(normalize_name(name)) or {}).get("pass_rush_snaps") if pressures is not None and (savant_rows.get(normalize_name(name)) or {}).get("pass_rush_snaps", 0) > 0 else None,
             "pressure_per_defensive_snap": pressures / snaps if pressures is not None and snaps > 0 else None,
             "pass_rush_win_rate": espn_rows.get("pass_rush_win_rate", {}).get(normalize_name(name)),
             "run_stop_win_rate": espn_rows.get("run_stop_win_rate", {}).get(normalize_name(name)),
@@ -348,15 +350,15 @@ def main():
         raise RuntimeError("No edge-rusher data produced; refusing to overwrite snapshot.")
     payload = {
         "season": SEASON,
-        "source": "nflverse PFR weekly defense + PBP event stats + snap counts; ESPN win-rate rankings via NFL Lines",
+        "source": "nflverse PFR weekly defense + PBP event stats + snap counts; NFL/Savant top-20 pass-rush snaps; ESPN win rates via NFL Lines",
         "advanced_sources": {"espn_win_rates": ESPN_WIN_RATE_URL},
         "source_url": DEF_URL, "snap_counts_url": SNAPS_URL,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "player_count": len(data), "players": data, "metrics": METRICS,
         "limitations": [
             "The combined group uses the roster positions DE, OLB and EDGE; public roster data does not reliably identify each team's defensive front, so some 4-3 off-ball OLB designations may be included.",
-            "Pressure pro Defensive Snap uses PFR pressures divided by defensive snaps. Pressure Rate and Sack Rate per Pass-Rush Snap remain blank until a reliable matching pass-rush-snap feed is available.",
-            "Quick Pressure Rate and Double-Team Rate remain blank because no reproducible public player-level feed is integrated. ESPN Win Rates are populated only for players in the published Edge top-20 (pass rush) and top-10 (run stop). No estimates are substituted.",
+            "Pass-Rush Snaps are imported only for NFL/Savant's top 20 edge-rusher leaderboard. PFR pressures and sacks are retained unchanged; Pressure Rate and Sack Rate divide those PFR totals by NFL/Savant pass-rush snaps. No Savant pressure or sack totals are used.",
+            "Quick Pressure Rate and Double-Team Rate remain blank because no reproducible public player-level feed is integrated. ESPN Win Rates are imported from its published Edge top-20 (pass rush) and top-10 (run stop), republished by NFL Lines. No estimates are substituted.",
             "PFR pressure, sack, hurry and knockdown totals are aggregated from weekly PFR defensive advanced stats when the relevant columns are present. TFLs and forced fumbles remain player-attributed play-by-play events."
         ]
     }
