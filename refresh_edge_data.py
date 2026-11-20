@@ -281,10 +281,10 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=(), savant_rows=None, esp
         team = max(teams[pid], key=teams[pid].get) if teams[pid] else (player.get("team") or "")
         name = player.get("display_name") or player.get("full_name") or player.get("name") or pid
         snap_denominator = sum(team_totals[t] for t in player_teams.get(pid, set()))
+        pfr = pfr_totals[pid]
         sacks = pfr.get("pfr_sacks") if pfr.get("pfr_sacks") is not None else s["sacks"]
         tfls = s["tfls"]
         negative_plays = len(negative_play_ids[pid])
-        pfr = pfr_totals[pid]
         combined_tackles = pfr.get("combined_tackles", 0)
         missed_tackles = pfr.get("missed_tackles", 0)
         tackle_attempts = combined_tackles + missed_tackles
