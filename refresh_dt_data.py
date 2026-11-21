@@ -46,6 +46,41 @@ METRICS = [
  {"key":"forced_fumbles","label":"Forced Fumbles","category":"Disruptive Plays","format":"number","higher_is_better":True}
 ]
 
+# ESPN Analytics DT leaderboard values reproduced by NFL Lines, through Week 10, 2026.
+ESPN_DT_WIN_RATES = {
+ "alim mcneill":{"pass_rush_win_rate":0.27,"pass_rush_wins":54,"pass_rush_attempts":200},
+ "brandon dorlus":{"pass_rush_win_rate":0.26,"pass_rush_wins":28,"pass_rush_attempts":106},
+ "maason smith":{"pass_rush_win_rate":0.25,"pass_rush_wins":31,"pass_rush_attempts":124},
+ "aaron donald":{"pass_rush_win_rate":0.24,"pass_rush_wins":26,"pass_rush_attempts":107},
+ "jeffery simmons":{"pass_rush_win_rate":0.24,"pass_rush_wins":39,"pass_rush_attempts":162},
+ "levi drake rodriguez":{"pass_rush_win_rate":0.22,"pass_rush_wins":21,"pass_rush_attempts":94},
+ "christian barmore":{"pass_rush_win_rate":0.21,"pass_rush_wins":22,"pass_rush_attempts":107},
+ "zach allen":{"pass_rush_win_rate":0.20,"pass_rush_wins":35,"pass_rush_attempts":176},
+ "milton williams":{"pass_rush_win_rate":0.19,"pass_rush_wins":28,"pass_rush_attempts":150},
+ "vita vea":{"pass_rush_win_rate":0.19,"pass_rush_wins":24,"pass_rush_attempts":129},
+ "osa odighizuwa":{"pass_rush_win_rate":0.19,"pass_rush_wins":28,"pass_rush_attempts":151},
+ "arik armstead":{"pass_rush_win_rate":0.18,"pass_rush_wins":26,"pass_rush_attempts":141},
+ "chris jones":{"pass_rush_win_rate":0.18,"pass_rush_wins":23,"pass_rush_attempts":130},
+ "jalen redmond":{"pass_rush_win_rate":0.18,"pass_rush_wins":24,"pass_rush_attempts":136},
+ "calijah kancey":{"pass_rush_win_rate":0.17,"pass_rush_wins":20,"pass_rush_attempts":115},
+ "jonathan allen":{"pass_rush_win_rate":0.17,"pass_rush_wins":22,"pass_rush_attempts":127},
+ "quinnen williams":{"pass_rush_win_rate":0.17,"pass_rush_wins":28,"pass_rush_attempts":163,"run_stop_win_rate":0.42,"run_stop_wins":61,"run_stop_attempts":143},
+ "braden fiske":{"pass_rush_win_rate":0.17,"pass_rush_wins":19,"pass_rush_attempts":112},
+ "dj reader":{"pass_rush_win_rate":0.17,"pass_rush_wins":17,"pass_rush_attempts":101},
+ "adetomiwa adebawore":{"pass_rush_win_rate":0.17,"pass_rush_wins":20,"pass_rush_attempts":120},
+ "dexter lawrence ii":{"pass_rush_win_rate":0.17,"pass_rush_wins":25,"pass_rush_attempts":150},
+ "moro ojomo":{"pass_rush_win_rate":0.17,"pass_rush_wins":21,"pass_rush_attempts":126},
+ "lacale london":{"run_stop_win_rate":0.46,"run_stop_wins":75,"run_stop_attempts":162},
+ "mason graham":{"run_stop_win_rate":0.42,"run_stop_wins":51,"run_stop_attempts":121},
+ "keeanu benton":{"run_stop_win_rate":0.41,"run_stop_wins":45,"run_stop_attempts":109},
+ "malcolm roach":{"run_stop_win_rate":0.41,"run_stop_wins":45,"run_stop_attempts":110},
+ "teair tart":{"run_stop_win_rate":0.40,"run_stop_wins":50,"run_stop_attempts":124},
+ "dj jones":{"run_stop_win_rate":0.40,"run_stop_wins":54,"run_stop_attempts":135},
+ "lee hunter":{"run_stop_win_rate":0.40,"run_stop_wins":45,"run_stop_attempts":114},
+ "grady jarrett":{"run_stop_win_rate":0.40,"run_stop_wins":39,"run_stop_attempts":98},
+ "jarran reed":{"run_stop_win_rate":0.40,"run_stop_wins":51,"run_stop_attempts":129}
+}
+
 def download(url):
     req = urllib.request.Request(url, headers={"User-Agent":"NFL-Analytics-DT-refresh/1.0"})
     with urllib.request.urlopen(req, timeout=180) as response:
@@ -193,11 +228,17 @@ def build(pbp, player_rows, defense_rows=(), snap_rows=()):
             "missed_tackle_rate": missed / attempts if missed is not None and attempts > 0 else None,
             "pass_rush_snaps": None, "sack_rate": None, "pressure_rate": None,
             "quick_pressure_rate": None, "pass_rush_win_rate": None, "run_stop_win_rate": None,
+            "pass_rush_wins": None, "pass_rush_attempts": None, "run_stop_wins": None, "run_stop_attempts": None,
             "double_team_rate": None,
             "negative_plays_forced": len(negative_play_ids[pid]),
             "negative_plays_forced_rate": len(negative_play_ids[pid]) / snaps if snaps > 0 else None
         }
         output.append(row)
+
+    for player in output:
+        espn = ESPN_DT_WIN_RATES.get(normalize_name(player["player_name"]))
+        if espn:
+            player.update(espn)
 
     for metric in METRICS:
         key = metric["key"]
@@ -218,8 +259,10 @@ def main():
         raise RuntimeError("No DT/NT player rows produced; refusing to overwrite snapshot.")
     payload = {
         "season": SEASON,
-        "source": "nflverse PFR weekly defensive advanced stats + play-by-play + snap counts",
+        "source": "nflverse PFR weekly defensive advanced stats + play-by-play + snap counts; ESPN Analytics DT win-rate leaderboard (through Week 10, reproduced by NFL Lines)",
         "source_url": DEF_URL, "snap_counts_url": SNAPS_URL,
+        "espn_win_rates_source_url": "https://nfllines.com/defensive-line-ratings/players/",
+        "espn_win_rates_through_week": 10,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "player_count": len(data), "players": data, "metrics": METRICS,
         "limitations": [
@@ -227,7 +270,7 @@ def main():
             "Sack Rate and Pressure Rate remain blank until reliable player-level pass-rush snap counts are integrated; defensive snaps are not used as a substitute.",
             "QB Hit Rate, Hurry Rate and TFL rate are normalized per 100 defensive snaps, not per pass-rush snap; they measure overall defensive-snap frequency.",
             "Pressure-to-Sack Conversion is sacks divided by PFR pressures; per-game rates use games with defensive snaps in the PFR snap-count feed.",
-            "Run Stop Rate, Stuff Rate, Quick Pressure Rate, Double-Team Rate and ESPN win rates remain blank until a reproducible DT-specific source is verified.",
+            "ESPN DT pass-rush win rate is populated for the published top-20 leaderboard (including ties); run-stop win rate is populated for the published top-10 leaderboard. Values are through Week 10, 2026, as reproduced by NFL Lines; players outside the published lists remain null.",
             "0/1-technique name highlighting is enabled for explicit NT roster designations only. DTs are not guessed into a technique group without alignment-share data."
         ]
     }
