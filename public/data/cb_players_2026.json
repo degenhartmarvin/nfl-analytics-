@@ -3,7 +3,7 @@
   "source": "nflverse weekly PFR advanced defense + play-by-play + players registry",
   "source_url": "https://github.com/nflverse/nflverse-data/releases/download/pfr_advstats/advstats_week_def_2026.csv",
   "snap_counts_url": "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2026.csv",
-  "updated_at": "2026-11-21T17:10:35.068518+00:00",
+  "updated_at": "2026-11-21T17:20:06.455693+00:00",
   "player_count": 181,
   "players": [
     {
