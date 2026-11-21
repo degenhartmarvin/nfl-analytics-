@@ -85,6 +85,10 @@ ESPN_DT_WIN_RATES = {
  "jarran reed":{"run_stop_win_rate":0.40,"run_stop_wins":51,"run_stop_attempts":129}
 }
 
+# The published leaderboard keys contain spaces; normalize them to the same
+# alphanumeric format used for player names before matching.
+ESPN_DT_WIN_RATES = {re.sub(r"[^a-z0-9]", "", name.lower()): value for name, value in ESPN_DT_WIN_RATES.items()}
+
 def download(url):
     req = urllib.request.Request(url, headers={"User-Agent":"NFL-Analytics-DT-refresh/1.0"})
     with urllib.request.urlopen(req, timeout=180) as response:
