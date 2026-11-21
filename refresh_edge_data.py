@@ -121,9 +121,24 @@ def parse_savant(raw):
     print(f"NFL/Savant HTML diagnostic: tables={len(parser.tables)}, bytes={len(source_text)}")
     found = {}
     for table in parser.tables:
-        for cells in table["rows"]:
-            # NFL/Savant currently renders Pos + Team as one cell (e.g. EDGEBUF),
-            # while older table layouts used separate Pos and Team cells.
+        rows = table["rows"]
+        if not rows:
+            continue
+
+        # Prefer the header name over a hard-coded cell offset: NFL/Savant's
+        # current table adds a trailing Snap % column, while older/test layouts
+        # may split Pos and Team and omit that final column.
+        header = [re.sub(r"[^a-z0-9]+", " ", cell.lower()).strip() for cell in rows[0]]
+        rush_index = next(
+            (i for i, label in enumerate(header)
+             if "pass rush" in label and ("snap" in label or "rush" in label)),
+            None
+        )
+        if rush_index is None:
+            # Fallback for header variants that label the column "Pass Rushes".
+            rush_index = next((i for i, label in enumerate(header) if "pass rushes" in label), None)
+
+        for cells in rows[1:]:
             if len(cells) < 8 or not cells[0].strip().isdigit():
                 continue
             rank = int(cells[0])
@@ -132,14 +147,17 @@ def parse_savant(raw):
             position = cells[2].upper().replace(" ", "")
             if not any(position.startswith(x) for x in ("EDGE", "DE", "OLB")):
                 continue
-            name = cells[1]
-            # Current layout: rank, player, combined Pos+Team, pressure%,
-            # pressures, sacks, QB hits, pass-rush snaps, snap%.
-            # Older layout split Pos and Team into separate cells.
-            rush_index = 7 if len(cells) == 9 else (6 if len(cells) == 8 else 8)
-            rush_snaps = num(cells[rush_index].replace(",", ""))
+            if rush_index is not None and rush_index < len(cells):
+                rush_value = cells[rush_index]
+            else:
+                # Last-resort compatibility for known table layouts only.
+                rush_index_fallback = 7 if len(cells) == 8 else (8 if len(cells) == 9 else None)
+                if rush_index_fallback is None:
+                    continue
+                rush_value = cells[rush_index_fallback]
+            rush_snaps = num(rush_value.replace(",", ""))
             if rush_snaps is not None and rush_snaps > 0:
-                found[normalize_name(name)] = {"pass_rush_snaps": rush_snaps}
+                found[normalize_name(cells[1])] = {"pass_rush_snaps": rush_snaps}
     return found
 
 def parse_espn_win_rates(raw):
