@@ -17,7 +17,7 @@ class DefensiveTacklePipelineTests(unittest.TestCase):
             {"season":"2026","game_type":"REG","game_id":"G1","team":"CIN","pfr_player_id":"PFR2","defense_snaps":"40","defense_pct":"0.4"}
         ]
         pbp = [
-            {"season":"2026","game_type":"REG","game_id":"G1","play_id":"1","defteam":"CIN","tackle_for_loss_1_player_id":"DT1","sack_player_id":"DT1","forced_fumble_player_1_id":"DT1"},
+            {"season":"2026","game_type":"REG","game_id":"G1","play_id":"1","defteam":"CIN","tackle_for_loss_1_player_id":"DT1","sack_player_id":"DT1","forced_fumble_player_1_player_id":"DT1"},
             {"season":"2026","game_type":"REG","game_id":"G1","play_id":"2","defteam":"CIN","tackle_for_loss_1_player_id":"NT1"}
         ]
         rows = build(pbp, players, defense, snaps)
