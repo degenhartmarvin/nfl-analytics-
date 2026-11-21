@@ -303,7 +303,13 @@ el('playerView').hidden=true;el('playerDetail').hidden=false;
 el('playerDetailTitle').textContent=p.player_name;
 el('playerDetailMeta').textContent=(p.team||'Team unbekannt')+' · '+(activePosition()==='QB'?'QB':activePosition()==='RB'?'RB':activePosition()==='CB'?'CB':activePosition()==='DT'?'DT':activePosition()==='EDGE'?'Edge Rusher (DE + OLB)':'WR')+' · '+playerSnapshot.season+' Saison';
 const list=activeMetricList(),cats=[...new Set(list.map(m=>m.cat))];
-el('playerDetailGroups').innerHTML=cats.map(cat=>'<details class="player-category"><summary>'+cat+'</summary>'+list.filter(m=>m.cat===cat).map(m=>'<div class="player-stat"><div><div class="stat-label">'+m.label+'</div>'+(m.note?'<div class="small">'+m.note+'</div>':'')+'</div><strong>'+playerFmt(p[m.key],m.format)+' <span class="stat-rank">'+(p[m.key+'_rank']?'#'+p[m.key+'_rank']:'—')+'</span></strong></div>').join('')+'</details>').join('');
+const eligible=playerSnapshot.players.filter(x=>!['CB','DT','EDGE'].includes(activePosition())||Number(x.defensive_snap_share)>=0.50);
+el('playerDetailGroups').innerHTML=cats.map(cat=>'<details class="player-category"><summary>'+cat+'</summary>'+list.filter(m=>m.cat===cat).map(m=>{
+const values=eligible.filter(x=>x[m.key]!=null).sort((a,b)=>m.high===false?Number(a[m.key])-Number(b[m.key]):Number(b[m.key])-Number(a[m.key]));
+const index=values.findIndex(x=>x.player_id===p.player_id);
+const rank=index<0?'—':(index>0&&Number(values[index-1][m.key])===Number(p[m.key])?'#'+(values.findIndex(x=>Number(x[m.key])===Number(p[m.key]))+1):'#'+(index+1));
+return '<div class="player-stat"><div><div class="stat-label">'+m.label+'</div>'+(m.note?'<div class="small">'+m.note+'</div>':'')+'</div><strong>'+playerFmt(p[m.key],m.format)+' <span class="stat-rank">'+(p[m.key]==null?'—':rank)+'</span></strong></div>';
+}).join('')+'</details>').join('');
 window.scrollTo({top:0,behavior:'smooth'});
 }
 function backToPlayers(){el('playerDetail').hidden=true;el('playerView').hidden=false;renderPlayerRanking();window.scrollTo({top:0,behavior:'smooth'});}
