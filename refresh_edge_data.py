@@ -116,7 +116,9 @@ def normalize_name(value):
 
 def parse_savant(raw):
     parser = StatTableParser()
-    parser.feed(raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw)
+    source_text = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw
+    parser.feed(source_text)
+    print(f"NFL/Savant HTML diagnostic: tables={len(parser.tables)}, bytes={len(source_text)}")
     found = {}
     for table in parser.tables:
         for cells in table["rows"]:
@@ -131,8 +133,10 @@ def parse_savant(raw):
             if not any(position.startswith(x) for x in ("EDGE", "DE", "OLB")):
                 continue
             name = cells[1]
-            # Combined Pos+Team layout has 8 cells; separate Pos and Team has 9+.
-            rush_index = 7 if len(cells) == 8 else 8
+            # Current layout: rank, player, combined Pos+Team, pressure%,
+            # pressures, sacks, QB hits, pass-rush snaps, snap%.
+            # Older layout split Pos and Team into separate cells.
+            rush_index = 7 if len(cells) == 9 else (6 if len(cells) == 8 else 8)
             rush_snaps = num(cells[rush_index].replace(",", ""))
             if rush_snaps is not None and rush_snaps > 0:
                 found[normalize_name(name)] = {"pass_rush_snaps": rush_snaps}
@@ -163,7 +167,10 @@ def parse_espn_win_rates(raw):
 
 def optional_download(url):
     try:
-        return download(url)
+        raw = download(url)
+        preview = raw[:500].decode("utf-8", "replace").replace("\\n", " ")
+        print(f"Optional source fetched: {url} | bytes={len(raw)} | prefix={preview[:300]!r}")
+        return raw
     except Exception as exc:
         print(f"Optional advanced source unavailable ({url}): {exc}")
         return None
