@@ -42,6 +42,12 @@ jobs:
           python-version: "3.12"
       - name: Test pipeline
         run: python -m unittest discover -s tests -v
+      - name: Diagnose NFL Savant browser data requests
+        continue-on-error: true
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+          python diagnose_savant_browser.py
       - name: Download and validate current 2026 team and WR data
         run: |
           python refresh_data.py
